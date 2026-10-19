@@ -1,0 +1,31 @@
+# ROMs and build output (built with tools/build_all.py)
+*.rom
+old_test_roms/
+work/
+# source media (not published)
+Videos/
+Music/
+*.wav
+*.mp3
+*.mp4
+# old / third party / generated
+Screenshots/
+manual/
+*.pdf
+wmsx.js
+webmsx_test.html
+.claude/pm-tools/old/
+game/gen.inc
+game/psgtab.inc
+game/clk.inc
+game/slots.inc
+game/slots_ns.txt
+game/plrsize.inc
+game/sgen.inc
+game/opts.inc
+game/*.bin
+game/*.lst
+game/*.sym
+__pycache__/
+game/cfg.inc
+PuzzleMania_TEST_*.rom
