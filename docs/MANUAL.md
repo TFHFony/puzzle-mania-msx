@@ -75,7 +75,7 @@ triangle shows that there are more photos: the list scrolls one column at a time
 | | |
 |---|---|
 | ![Photo menu](images/06_menu.png) | ![Photo menu, scrolled](images/07_menu_scrolled.png) |
-| The first four photos | Scrolled one column |
+| The first four photos (the cursor is on the photo of the examples in this manual) | Scrolled one column |
 
 The bottom line shows © 2026 FONY, a smile and [H]ELP: **H** shows two pages of help (SPACE = next page, ESC = back); **ESC** shows the credits.
 
@@ -100,6 +100,8 @@ Two options can be set here (and also during the game):
 | The size menu with the two options | After pressing C: the control is CURSOR |
 
 ## 5. Playing
+
+The pictures in this chapter and the next one show the **FH** photo (the second column of the photo menu) and its reward video, played with the 4×4 grid.
 
 The empty square is the gap. Only a piece next to the gap can move. The picture is complete when every piece is back where it came from.
 The game always starts from a puzzle that can be solved. The moves and the time start at 0 with every new puzzle.
