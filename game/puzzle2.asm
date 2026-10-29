@@ -208,6 +208,10 @@ showfull:                               ; the whole plain photo (a job: the musi
         inc a
         ld l,a
         ld h,0
+        push de
+        ld de,(v_pb)
+        add hl,de
+        pop de
         jp job_pic
 
 puzlined:                               ; select the puzzle image bank: size, line style (thick, thin, off = plain photo)
@@ -496,6 +500,9 @@ puzzle: call hidecursor
         ld a,4
         ld (mus_gt),a
         call job_black
+        ld a,(v_photo)                  ; MSX2: the palette of the photo
+        add a,PAL_PHOTO0
+        call need_pal
 .sh:    call shuffle
         call solved                     ; never start from a solved puzzle
         jr z,.sh
@@ -525,12 +532,23 @@ puzzle: call hidecursor
         call keyedge
         call hint_update                ; (the loop only runs when something happens: the sprite cursor has to be there at the start)
 .l:     call mvsync
-        ld a,(mus_busy)                 ; nothing to do (no key change, no cursor flash, no hint): counters and timer run in the slots
+        call selchk
+        ld a,(att_on)
+        or a
+        jr z,.nat
+        call att_step                   ; 0 = go on, 1 = a key was pressed, 2 = solved
+        or a
+        jr z,.l
+        dec a
+        jr z,.esc
+        or a                            ; NC = solved
+        ret
+.nat:   ld a,(mus_busy)                 ; nothing to do (no key change, no cursor flash, no hint): counters and timer run in the slots
         or a
         jr z,.l
         call getesc
         jr nz,.noesc
-        call job_flush
+.esc:   call job_flush
         call hidecursor
         call music_fadeout
         call wait_release
@@ -696,17 +714,50 @@ puzzle: call hidecursor
         ret
 
 ; ------------------------------------------------------------------------------------------------ solved: jingle, flourish, the video
-win:    ld a,2
-        ld c,0
-        call music_play                 ; the jingle plays once
+win:
         call showfull
         call job_flush                  ; the banner goes on the bottom row of the picture
         call win_banner
+        call music_stop                 ; the jingle: the FONY jingle of the disk version as a sample (track 3): over the SCC if there is one, else the PSG
+        ld a,3
+        ld c,0
+        call music_play
+        xor a                           ; (music_play always fades in: the jingle starts at full volume)
+        ld (mus_gs),a
+        ld (mus_gt),a
+        ld a,TABHI
+        ld (mus_tab),a
+        call scc_gain
         xor a
         ld (v_frame),a
         ld hl,0
         ld (v_tmp2),hl
-.l:     call mvsync
+.j:     call mvsync                     ; first the jingle alone, on a quiet screen: no screen work, so the player loses no samples (idle frames)
+        ld hl,v_frame
+        inc (hl)
+        ld a,(mus_done)
+        or a
+        jr nz,.jd
+        ld a,(v_frame)
+        cp 60
+        jr c,.j
+        call getfire                    ; (SPACE skips it, but not in the first second)
+        jr z,.j
+        jr .end
+.jd:    call music_stop
+        call conf_init                  ; then the confetti and the flashing, without sound: the length of the old jingle (46 rows of 5 / 6 frames)
+        xor a
+        ld (v_frame),a
+        ld hl,0
+        ld (v_tmp2),hl
+        ld a,(v_hz)
+        cp 50
+        ld hl,230
+        jr z,.he
+        ld hl,276
+.he:    ld (v_tmp3),hl
+.l:     call jwait
+        call conf_step
         ld hl,v_frame
         inc (hl)
         ld hl,(v_tmp2)
@@ -720,11 +771,14 @@ win:    ld a,2
         jr c,.fl
         jr nz,.chk
         call flash_off
+        call conf_park
         jr .chk
 .fl:    call flash_on
-.chk:   ld a,(mus_done)
+.chk:   ld hl,(v_tmp2)
+        ld de,(v_tmp3)
         or a
-        jr nz,.end
+        sbc hl,de
+        jr z,.end
         ld hl,(v_tmp2)
         ld a,h
         or a
@@ -735,7 +789,10 @@ win:    ld a,2
 .cf:    call getfire
         jr z,.l
 .end:   call flash_off
+        call conf_end
         call music_stop
+        ld a,PAL_TMS                    ; MSX2: the videos are coded for the TMS9918A palette
+        call need_pal
         ld a,(v_photo)
         call play
         jp wait_release

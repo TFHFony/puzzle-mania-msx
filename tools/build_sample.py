@@ -11,7 +11,7 @@ def build(curve, scale=0):
     os.environ['PSG_SCALE'] = str(scale)
     arg = lambda name, default=None: sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
     open(os.path.join(PROJ, 'game', 'opts.inc'), 'w').write('SFRAMED equ %d\nSJOB equ %d\n' % (1 if '--framed' in sys.argv else 0, 1 if '--job' in sys.argv else 0))
-    open(os.path.join(PROJ, 'game', 'cfg.inc'), 'w').write('ASCII16 equ 0\nDIAG equ 0\nFREE equ 0\nTITLEVIDEO equ 0\nTVBANK equ 0\nTVFRAMES equ 0\nPLR_BANK equ 254\nTIETONLY equ 0\n')
+    open(os.path.join(PROJ, 'game', 'cfg.inc'), 'w').write('ASCII16 equ 0\nDIAG equ 0\nFREE equ 0\nTITLEVIDEO equ 0\nTVBANK equ 0\nTVFRAMES equ 0\nPLR_BANK equ 254\nTIETONLY equ 0\nBUILDID equ 0\nSCC equ 0\nMSX2PAL equ 0\nPBOFFS equ 0\nWELCOME2 equ 0\n')
     sys.path.insert(0, HERE)
     subprocess.run([sys.executable, os.path.join(HERE, 'gen_slots.py')], check=True, capture_output=True)
     import music

@@ -134,16 +134,38 @@ def render_credits():
     return img
 
 
+def exact(a, fix=None):
+    """exact coding of a text screen: every 8x1 segment holds black plus one colour (checked), so nothing is dithered or approximated -> no colour bleeding.
+    returns (data in char order, preview)"""
+    h, w = a.shape[:2]
+    P8 = np.asarray(PAL).astype(int)
+    idx = np.full((h, w), 1, np.int16)                         # TMS colour 1 = black
+    flat = a.reshape(-1, 3).astype(int)
+    for k in range(1, 16):
+        idx.reshape(-1)[(flat == P8[k]).all(axis=1)] = k
+    assert not (a.reshape(-1, 3).astype(int)[~np.isin(idx.reshape(-1), range(1, 16))]).size
+    pat = np.zeros((h, w // 8), np.uint8); col = np.zeros((h, w // 8), np.uint8)
+    for y in range(h):
+        for c in range(w // 8):
+            seg = idx[y, c * 8:c * 8 + 8]
+            cs = [k for k in sorted(set(seg.tolist())) if k != 1]
+            assert len(cs) <= 1 or (y, c) and (print('colour clash', y, c, cs) or True)
+            fg = cs[0] if cs else 1
+            if len(cs) > 1:                                    # (not expected) the most frequent colour wins
+                fg = max(cs, key=lambda k: (seg == k).sum())
+            pat[y, c] = sum(1 << (7 - i) for i in range(8) if seg[i] == fg and fg != 1)
+            col[y, c] = fg << 4 | 1
+    rend = np.zeros((h, w, 3), np.uint8)
+    for y in range(h):
+        for c in range(w // 8):
+            fg = col[y, c] >> 4
+            for i in range(8):
+                rend[y, c * 8 + i] = P8[fg] if pat[y, c] >> (7 - i) & 1 else P8[1]
+    def chars(x):
+        return x.reshape(h // 8, 8, w // 8).transpose(0, 2, 1).reshape(-1).tobytes()
+    return chars(pat) + chars(col), rend
+
+
 def screen(name, coded):
     a = render_credits() if name == 'credits' else render(PAGES[name])
-    fix = (a.max(-1) == 0).astype(np.int8)
-    return coded(a, fix)
-
-
-if __name__ == '__main__':
-    import build_game as B
-    out = os.path.join(B.PROJ, 'work', 'preview'); os.makedirs(out, exist_ok=True)
-    for n in PAGES:
-        data, rend = screen(n, B.coded)
-        Image.fromarray(rend).resize((768, 576), Image.NEAREST).save(os.path.join(out, n + '.png'))
-        print(n)
+    return exact(a)

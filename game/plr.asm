@@ -1,5 +1,6 @@
 ; the player block, assembled for its place in the RAM (tools/build_game.py stores it in ROM bank PLR_BANK)
         DEVICE NOSLOT64K
+SCCPLAYER equ 0
         INCLUDE "equ.inc"
         INCLUDE "heads.inc"
         INCLUDE "clk.inc"

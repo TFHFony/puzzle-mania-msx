@@ -3,7 +3,7 @@
 ; steps of the fades.  There is no timer on an MSX1, so the waiting loops of the game (mvsync) output the samples themselves, at an exact
 ; 8000 Hz clock.  The music is locked to the frame: a frame is exactly mus_f samples long, the samples that were not played because the
 ; screen work took time are skipped, so pitch and phase stay right.  While big pieces of the screen are drawn the music pauses.
-; tracks: 0 menu, 1 puzzle, 2 jingle (plays once)
+; tracks: 0 menu, 1 puzzle
 music_play:                             ; A = track, C = 1: fade in.  A track that is already playing keeps going.
         ld b,a
         ld a,(mus_on)
@@ -20,6 +20,13 @@ music_play:                             ; A = track, C = 1: fade in.  A track th
         ld e,a
         ld d,0
         ld hl,mustab
+        IF SCC
+        ld a,(v_sccm)                   ; the SCC player has its own music (16 kHz)
+        or a
+        jr z,.mt
+        ld hl,mustab_scc
+.mt:
+        ENDIF
         add hl,de
         ld e,(hl)
         inc hl
@@ -123,10 +130,10 @@ music_play:                             ; A = track, C = 1: fade in.  A track th
         PLN 7,mus_kc
         ld a,b
         ld (mus_fx),a
-        ld a,FI_PAL
+        ld a,(fi_p)
         bit 0,b
         jr z,.fi
-        ld a,FI_NTSC
+        ld a,(fi_n)
 .fi:    ld (mus_fi),a
         xor a
         ld (mus_fc),a
@@ -141,6 +148,8 @@ music_play:                             ; A = track, C = 1: fade in.  A track th
         ld (mus_tab),a
 .nf:    ld a,1
         ld (mus_on),a
+        call scc_minit                  ; (the SCC: channel 1 for the samples)
+        call scc_gain
         ld a,7                          ; mixer: tone and noise off, the channels only give their volume
         out (0xA0),a
         ld a,0xBF
@@ -148,13 +157,33 @@ music_play:                             ; A = track, C = 1: fade in.  A track th
         ret
 
 music_stop:
+        call scc_off
         xor a
         ld (mus_on),a
         ld (mus_gs),a
         ld (mus_gt),a
         dec a
         ld (mus_trk),a
-        ld a,8
+        IF SCC
+        ld a,(v_sccm)
+        or a
+        jr nz,.zero                     ; (the SCC plays the music: the PSG is idle)
+        ENDIF
+        ld a,8                          ; the PSG stays at the level of silence (the first entries of the constant tables of gain step 4): a step to volume 0 is a click
+        out (0xA0),a
+        ld a,(TABHI*256+0xC00)
+        out (0xA1),a
+        ld a,9
+        out (0xA0),a
+        ld a,(TABHI*256+0xD00)
+        out (0xA1),a
+        ld a,10
+        out (0xA0),a
+        ld a,(TABHI*256+0xE00)
+        out (0xA1),a
+        ret
+        IF SCC
+.zero:  ld a,8
         out (0xA0),a
         xor a
         out (0xA1),a
@@ -167,6 +196,7 @@ music_stop:
         xor a
         out (0xA1),a
         ret
+        ENDIF
 
 music_fadeout:                          ; fade the music out (0.5 s), then stop it
         ld a,(mus_on)
@@ -211,4 +241,4 @@ fadestep:                               ; every 6 frames one gain step towards t
         add a,b
         add a,TABHI
         ld (mus_tab),a
-        ret
+        jp scc_gain_s                   ; (called from a slot of the player: page 2 is the SCC already)

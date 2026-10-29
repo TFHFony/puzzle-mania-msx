@@ -125,6 +125,8 @@ posidx: ld a,(d_y)                      ; A = d_y * N + d_x
         ret
 
 shuffle:                                ; random walk of the blank from the solved position: always solvable
+        ld hl,ATT_BUF                   ; (the attract mode records the moves)
+        ld (att_p),hl
         ld a,(p_n2)
         ld c,a
         ld b,0
@@ -134,7 +136,16 @@ shuffle:                                ; random walk of the blank from the solv
         dec d
         jr nz,.m
         ld (p_cnt),hl
-        ld a,0xFF
+        ld a,(att_on)                   ; attract mode: 35 moves (3x3) or 60 moves (4x4), at 1 move per second 35 s or 60 s
+        or a
+        jr z,.nc
+        ld hl,35
+        ld a,(v_size)
+        cp 4
+        jr nz,.a3
+        ld hl,60
+.a3:    ld (p_cnt),hl
+.nc:    ld a,0xFF
         ld (p_last),a
 .l:     call rnd
         and 3
@@ -150,7 +161,14 @@ shuffle:                                ; random walk of the blank from the solv
         jr c,.l
         ld a,b
         ld (p_last),a
-        ld hl,(p_cnt)
+        ld a,(att_on)
+        or a
+        jr z,.nr
+        ld hl,(att_p)
+        ld (hl),b
+        inc hl
+        ld (att_p),hl
+.nr:    ld hl,(p_cnt)
         dec hl
         ld (p_cnt),hl
         ld a,h

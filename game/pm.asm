@@ -22,6 +22,11 @@ init:   di
         ld bc,0x02FF
         ld (hl),0
         ldir
+        ld hl,att_d                     ; (the list of attract photos lies outside the cleared area)
+        ld de,att_d+1
+        ld bc,8
+        ld (hl),0
+        ldir
         call job_reset                  ; the job engine of the player (alternate registers, queue): the power-on state of a real machine is garbage
         xor a
         ld (0x6000),a                   ; page 1 window = bank 0
@@ -43,9 +48,20 @@ init:   di
         ld a,(hl)
         and 0x0C
         or c
+        ld (v_own),a                    ; the slot of our cartridge
         ld h,0x80
         call 0x0024                     ; ENASLT
         di
+        xor a
+        ld (v_sccm),a                   ; (the RAM above 0C300h is not cleared: not the SCC player until the scan says so)
+        ld a,FI_PAL                     ; sample clock fractions of the PSG player (the SCC player has its own, see scc_mode_init)
+        ld (fi_p),a
+        ld a,FI_NTSC
+        ld (fi_n),a
+        IF SCC
+        call scc_scan                   ; an SCC cartridge in another slot?
+        call scc_mode_init              ; (then the music goes to the SCC and the player block for the SCC is loaded)
+        ENDIF
         call player_load                ; (page 2 is our cartridge now)
         ld hl,(0x0004)                  ; BIOS font
         ld (v_font),hl
@@ -79,6 +95,11 @@ init:   di
         ld (p_ek),a
         ld (p_hint),a
         ld (p_shadow),a
+        ld (mus_sel),a                  ; (the keys that the slots of the player derive: no SELECT press, no key, no direction, no L / C / T)
+        ld (mus_any),a
+        ld (mus_dk),a
+        ld (mus_dkey),a
+        ld (mus_ke),a
         dec a
         ld (k8),a
         ld (k7),a
@@ -86,8 +107,10 @@ init:   di
         ld (k4),a
         ld (k5),a
         ld (sc_last),a
-        call hzdetect
+        call msx_init
+        call hz_init                    ; 50 Hz (a TMS9918A machine: as it is)
         call selftest
+        call spec_check                 ; S held: the specs
         IF TIETONLY
 .tt:     call welcome                    ; test ROM: the logo and the title video, again and again
         jr .tt
@@ -97,26 +120,74 @@ init:   di
         ENDIF
         call welcome
 .menu:  xor a
-        ld c,1
-        call music_play                 ; menu music (carries on if it already plays)
+        ld (att_on),a
+        ld a,(mus_on)                   ; the menu music plays already (back from the credits, the size menu, the puzzle): the menu is drawn over it
+        or a
+        jr z,.fresh
+        ld a,(mus_trk)
+        or a
+        jr z,.cont
+.fresh: xor a                           ; a new start:
+        ld c,1                          ; (the track 0) the player runs silent while the menu is drawn, then the music starts from its beginning
+        call music_play
+        ld a,4
+        ld (mus_gt),a
         call draw_menu
-        call menu_loop                  ; NC = photo chosen, C = ESC
+        call music_stop
+        ld c,1
+        xor a
+        call music_play                 ; (fades in)
+        jr .mm
+.cont:  xor a
+        ld c,1
+        call music_play                 ; (carries on)
+        call draw_menu
+.mm:    call menu_loop                  ; NC = photo chosen, C = ESC
         jr nc,.size
         call credits
-        jr .menu
-.size:  call draw_size
+        jp .menu
+.size:  ld a,(att_on)
+        or a
+        jr z,.ns
+        call draw_size                  ; attract mode: the song has been muted since the attract mode started (att_mute), the size menu, the cursor goes to 3x3 or 4x4
+        ld a,(att_sz)
+        sub 3
+        ld (v_ssel),a
+        ld b,ATT_SHOW
+.sf:    push bc
+        call mvsync
+        call size_cursor
+        call anykey
+        pop bc
+        jr nz,.sk
+        djnz .sf
+        call hidecursor
+        ld a,(att_sz)
+        jr .go
+.sk:    call hidecursor
+        call wait_release
+        call att_unmute                 ; (a key: the song goes on)
+        jp .menu
+.ns:    call draw_size
         call size_loop                  ; carry = ESC, else A = N
-        jr c,.menu
-        ld (v_size),a
+        jp c,.menu
+.go:    ld (v_size),a
         call music_fadeout
         call puzzle                     ; carry = ESC (back to the menu), NC = solved
         push af
         xor a
         ld (p_hint),a
         pop af
-        jr c,.menu
+        jp c,.menu
         call win
-        jr .menu
+        ld a,(att_on)
+        or a
+        jp z,.menu
+        xor a                           ; the attract mode: after the clip the title again (video and photo alternate), then the menu
+        ld (att_on),a
+        call wipe_clear
+        call title
+        jp .menu
 
         INCLUDE "core.asm"
         INCLUDE "music.asm"
@@ -124,18 +195,41 @@ init:   di
         INCLUDE "menu.asm"
         INCLUDE "puzzle.asm"
         INCLUDE "puzzle2.asm"
+        INCLUDE "extra.asm"
+        INCLUDE "msx2.asm"
+        INCLUDE "intro.asm"
+        IF MSX2PAL
+        INCLUDE "fonyov.inc"            ; the palette of the logo, the palette of the TMS9918A (generated by tools/build_game.py)
+        ENDIF
+        INCLUDE "spec.asm"
+        INCLUDE "scc.asm"
         INCLUDE "job.asm"
         INCLUDE "vplay.asm"
         INCLUDE "diag.asm"
         IF TITLEVIDEO
         INCLUDE "tvplay.inc"
+        INCLUDE "tvplay8.inc"            ; the same for a machine with a VDP wait state (v_tvd, wtest.asm)
+        IF SCC
+        INCLUDE "tvplay16.inc"
+        INCLUDE "tvplay16w.inc"
+        ENDIF
         ENDIF
 player_load:                            ; the player block from its ROM bank into the RAM
         ld hl,PLR_BANK
+        ld bc,PLR_SIZE
+        IF SCC
+        ld a,(v_sccm)
+        or a
+        jr z,.pl
+        ld hl,PLR_BANK_SCC
+        ld bc,PLR_SIZE_SCC
+.pl:
+        ENDIF
+        push bc
         call setbank
+        pop bc
         ld hl,0x8000
         ld de,PLAYER_RAM
-        ld bc,PLR_SIZE
         ldir
         ret
         INCLUDE "gen.inc"               ; bank numbers, tracks, clips, tile geometry, arrows (generated)

@@ -4,7 +4,7 @@ wants).  The burns are computed from the cycles of the instructions (MSX: +1 per
 corrections that were measured in openMSX (tools/tune_tv.py).
 Registers: HL stream, C = 98h, B = 0 at the start of a row segment (the 8 + 31 * 8 outi bring it back to 0: the loop is 'jp nz'),
 IYH = VRAM address (high byte | 40h) of the pattern row, IXH = the same for the colour row (+20h), DE = tables / burn."""
-import os, json
+import os, json, re
 HERE = os.path.dirname(os.path.abspath(__file__)); PROJ = os.path.dirname(HERE)
 PERIOD = 446
 OUTI, LDAR = 19, 11
@@ -43,7 +43,7 @@ VOUT8 = ['        outi'] + ['        ld a,r', '        outi'] * 7
 VOUT8_C = 8 * OUTI + 7 * LDAR
 
 
-def main():
+def main(DD=0, pfx='', outname='tvplay.inc'):          # DD: cycles less per loop (a faster loop for a machine with VDP wait states), pfx: before the global labels (several copies in one program)
     adj = {}
     pj = os.path.join(HERE, 'tvplay.json')
     if os.path.exists(pj):
@@ -77,39 +77,46 @@ def main():
     L += AUDIO
     space = ['        in a,(0xAA)', '        and 0xF0', '        or 8', '        out (0xAA),a', '        in a,(0xA9)', '        bit 0,a', '        jp z,tv_exit']
     L += space
-    L += B(PERIOD - AUDIO_C - 76 + adj.get('H1', 0))
+    L += B(PERIOD - DD - AUDIO_C - 76 + adj.get('H1', 0))
     # ---- H2: joystick fire A
     L += AUDIO
     joy = ['        ld a,15', '        out (0xA0),a', '        in a,(0xA2)', '        and 0xBF', '        out (0xA1),a', '        ld a,14', '        out (0xA0),a',
            '        in a,(0xA2)', '        bit 4,a', '        jp z,tv_exit']
     L += joy
-    L += B(PERIOD - AUDIO_C - 110 + adj.get('H2', 0))
+    L += B(PERIOD - DD - AUDIO_C - 110 + adj.get('H2', 0))
     # ---- the rows
     L.append('tv_row:')
     for tab, reg in (('p', 'iyh'), ('c', 'ixh')):
         L += AUDIO
         L += ['        xor a', '        out (0x99),a', '        ld a,%s' % reg, '        out (0x99),a']
-        L += B(PERIOD - AUDIO_C - 41 - VOUT8_C + adj.get('S', 0))
+        L += B(PERIOD - DD - AUDIO_C - 41 - VOUT8_C + adj.get('S', 0))
         L += VOUT8
         L.append('.n%s:' % tab)
         L += AUDIO
-        L += B(PERIOD - AUDIO_C - VOUT8_C - 11 + adj.get('N', 0))        # (a burn loop changes Z: before the outi, the last one sets Z when B has counted back to 0)
+        L += B(PERIOD - DD - AUDIO_C - VOUT8_C - 11 + adj.get('N', 0))        # (a burn loop changes Z: before the outi, the last one sets Z when B has counted back to 0)
         L += VOUT8
         L += ['        jp nz,.n%s' % tab]
     # ---- the end of the row
     L += AUDIO
     L += ['        inc iyh', '        inc ixh', '        ld a,iyh', '        cp 0x58', '        jp z,tv_end']
-    L += B(PERIOD - AUDIO_C - 10 - 10 - 10 - 8 - 11 - 11 + adj.get('E', 0))
+    L += B(PERIOD - DD - AUDIO_C - 10 - 10 - 10 - 8 - 11 - 11 + adj.get('E', 0))
     L += ['        jp tv_row']
     L.append('tv_end:')
-    L += B(PERIOD - AUDIO_C - 10 - 10 - 10 - 8 - 11 - 11 - pre_c + adj.get('F', 0))
+    L += B(PERIOD - DD - AUDIO_C - 10 - 10 - 10 - 8 - 11 - 11 - pre_c + adj.get('F', 0))
     L += ['        jp tv_frame']
     L.append('tv_exit:')
-    L += ['        ld a,8', '        out (0xA0),a', '        xor a', '        out (0xA1),a', '        ld a,9', '        out (0xA0),a', '        xor a', '        out (0xA1),a',
-          '        ld a,10', '        out (0xA0),a', '        xor a', '        out (0xA1),a', '        ret']
-    open(os.path.join(PROJ, 'game', 'tvplay.inc'), 'w').write('\n'.join(L) + '\n')
-    print('tvplay.inc', len(L), 'lines')
+    L += ['        ld a,8', '        out (0xA0),a', '        ld a,(TABHI*256+0xC00)', '        out (0xA1),a', '        ld a,9', '        out (0xA0),a', '        ld a,(TABHI*256+0xD00)', '        out (0xA1),a',
+          '        ld a,10', '        out (0xA0),a', '        ld a,(TABHI*256+0xE00)', '        out (0xA1),a', '        ret']        # (the PSG stays at the level of silence: the first entries of the constant tables of gain step 4, no click)
+    txt = '\n'.join(L) + '\n'
+    if pfx:
+        txt = re.sub(r'\b(tvplay|tv_frame0|tv_frame|tv_row|tv_end|tv_exit)\b', pfx + r'\1', txt)
+    open(os.path.join(PROJ, 'game', outname), 'w').write(txt)
+    print(outname, len(L), 'lines')
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    if '--wait' in sys.argv:                  # game/tvplay8.inc: the loop for a machine with a VDP wait state (8 outi per iteration: 8 cycles less)
+        main(8, 'tv8_', 'tvplay8.inc')
+    else:
+        main()

@@ -12,11 +12,12 @@ sys.path.insert(0, r'F:\MSX Projects\Dev27\msx1-video-player\tools')
 import msx1_video as V
 H, W = 192, 256
 CLIPS = ['clip.mp4', 'Easter2025.mp4', 'FH.mp4', 'File-Hunter-25.mp4', 'Fony-35.mp4', 'MSXdev-20.mp4', 'Oops2.mp4', 'PM.m4v', 'Puzzle.mp4',
-         'www.file-hunter.com2022.mp4']
-USED = [0, 1, 2, 3, 4, 5, 7, 8, 9]          # photo p = clip USED[p]
+         'www.file-hunter.com2022.mp4', 'STEF-1.mp4']
+USED = [0, 10, 2, 3, 4, 5, 7, 8, 9, 1]      # photo p = clip USED[p]
+GRADE = {10: 'eq=saturation=1.2:contrast=1.05'}                            # ffmpeg filter (black level / saturation / contrast) in front of the encoder, per clip
 FPS = 10
 LITE_FPS = 50 / 6                           # one frame per 6 fields on a 50 Hz machine (8.33 fps; 8.57 fps on 60 Hz with 7 fields)
-LITE_BUDGET = 3840                          # 60 MB of 16 KB banks
+LITE_BUDGET = 5100                          # frames: 4 frames of 12 KB are packed in 3 banks, so about 3830 banks of 16 KB (60 MB)
 FADE = 1.5                                  # seconds
 
 
@@ -35,6 +36,8 @@ def lite_plan():
 def extract(i, lite):
     src = os.path.join(PROJ, 'Videos', CLIPS[i])
     crop = "crop=w='min(iw,ih*4/3)':h='min(ih,iw*3/4)':x='(iw-out_w)*0.5':y='(ih-out_h)/2',scale=256:192:flags=area,hqdn3d=3:3:8:6"
+    if GRADE.get(i):
+        crop += ',' + GRADE[i]
     if lite:
         sec, n = lite_plan()[i]
         out = os.path.join(PROJ, 'work', 'lite_clip%02d_frames.rgb' % i)

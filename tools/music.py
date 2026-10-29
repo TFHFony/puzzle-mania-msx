@@ -39,11 +39,11 @@ def levels(curve=None):
     return vals[sel], [trips[i] for i in sel]
 
 
-def decode(path, seconds=None, fade=0.0):
+def decode(path, seconds=None, fade=0.0, rate=None):
     af = 'acompressor=threshold=0.12:ratio=3:attack=5:release=120:makeup=2,alimiter=limit=0.97'
     if seconds and fade:
         af += ',afade=t=out:st=%.3f:d=%.3f' % (seconds - fade, fade)
-    cmd = ['ffmpeg', '-v', 'error', '-i', path, '-vn', '-ac', '1', '-ar', str(RATE)]
+    cmd = ['ffmpeg', '-v', 'error', '-i', path, '-vn', '-ac', '1', '-ar', str(rate or RATE)]
     if seconds:
         cmd += ['-t', '%.4f' % seconds]
     r = subprocess.run(cmd + ['-af', af, '-f', 'f32le', '-'], capture_output=True, check=True)
@@ -91,6 +91,30 @@ def track(name, path, banks=None, fade=0.8, gapk=0):
         q = q[:banks * BANK]
     nb = -(-len(q) // BANK)
     q = np.concatenate([q, np.full(nb * BANK - len(q), silence, np.uint8)])
+    np.save(cache, q)
+    return q.tobytes()
+
+
+RATE16 = 16000                                  # the SCC player: two samples per iteration, 16 kHz, 8 bit linear, signed bytes (silence = 0)
+
+
+def track16(name, path, banks=None, fade=0.8, gapk=0):
+    """the music for the SCC player (game/scc16): 16 kHz, 256 linear levels (signed bytes), the gap of gapk iterations = 2 * gapk samples.
+    -> bytes, a whole number of banks.  banks=n: cut to n banks with a fade-out (the same duration as the 8 kHz track of n / 2 banks)"""
+    cache = os.path.join(PROJ, 'work', 'music16_%s_%s_%s_v1.npy' % (name, banks, gapk))
+    if os.path.exists(cache) and os.path.getmtime(cache) > max(os.path.getmtime(path), os.path.getmtime(__file__)):
+        return np.load(cache).tobytes()
+    lv = np.linspace(0, 1, 256)
+    if banks:
+        x = decode(path, banks * BANK / RATE16, fade, RATE16)
+    else:
+        x = decode(path, rate=RATE16)
+    q = quantise(gapshape(x, 2 * gapk, 320), lv)
+    if banks:
+        q = q[:banks * BANK]
+    nb = -(-len(q) // BANK)
+    q = np.concatenate([q, np.full(nb * BANK - len(q), 128, np.uint8)])
+    q = (q ^ 0x80).astype(np.uint8)                       # index 0..255 -> signed byte (index 128 = silence = 0)
     np.save(cache, q)
     return q.tobytes()
 

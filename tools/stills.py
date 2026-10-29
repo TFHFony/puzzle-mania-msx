@@ -68,12 +68,13 @@ def code_rows(src, pal=P.TMS, kcon=0.06, K=8, clampe=0.3, fix=None):
     return A_idx, B_idx, bits
 
 
-def encode(src, fix=None):
-    """-> pat (h, nc) uint8, col (h, nc) uint8, rendered image"""
-    A, B, bits = code_rows(src, fix=fix)
+def encode(src, fix=None, pal=None):
+    """-> pat (h, nc) uint8, col (h, nc) uint8, rendered image   (pal: the 16 colours, default the TMS9918A palette)"""
+    pal = P.TMS if pal is None else np.asarray(pal, np.float32)
+    A, B, bits = code_rows(src, pal=pal, fix=fix)
     pat = (bits.astype(np.uint8) << (7 - np.arange(8, dtype=np.uint8))).sum(-1).astype(np.uint8)
     col = ((B << 4) | A).astype(np.uint8)
-    img = np.where(bits[..., None], P.TMS[B][:, :, None, :], P.TMS[A][:, :, None, :]).reshape(src.shape[0], src.shape[1], 3)
+    img = np.where(bits[..., None], pal[B][:, :, None, :], pal[A][:, :, None, :]).reshape(src.shape[0], src.shape[1], 3)
     return pat, col, np.clip(img, 0, 255).astype(np.uint8)
 
 

@@ -74,7 +74,7 @@ job_flush:                              ; wait until everything queued is on the
 
 
 ; ---- queue entries
-        MACRO ENTRY adjhi, bankvar
+        MACRO ENTRY adjhi, bankvar, bankhi
         ld (hl),c
         inc l
         ld (hl),b
@@ -97,7 +97,8 @@ job_flush:                              ; wait until everything queued is on the
         ld a,(bankvar)
         ld (hl),a
         inc l
-        ld (hl),0
+        ld a,(bankhi)                   ; (the banks of the MSX2 photos are above 255)
+        ld (hl),a
         ld a,l
         add a,7
         ld l,a
@@ -180,14 +181,14 @@ job_put_tile:                           ; A = tile, B = position (cell): the pic
         ld c,l
         pop de
         ld hl,(j_qa)
-        ENTRY 0,p_bank
+        ENTRY 0,p_bank,p_bank+1
         ld a,b
         add a,0x18
         ld b,a
         ld a,d
         add a,0x20
         ld d,a
-        ENTRY 0,p_bank
+        ENTRY 0,p_bank,p_bank+1
         ld (j_qa),hl
         ld a,(j_qn)
         add a,2
@@ -206,12 +207,12 @@ job_put_blank:                          ; A = position (cell): black (from the c
         set 6,d
         ld hl,(j_qa)
         ld bc,blank0
-        ENTRY 0xFF,j_zero
+        ENTRY 0xFF,j_zero,j_zero
         ld bc,blank1
         ld a,d
         add a,0x20
         ld d,a
-        ENTRY 0xFF,j_zero
+        ENTRY 0xFF,j_zero,j_zero
         ld (j_qa),hl
         ld a,(j_qn)
         add a,2
@@ -492,6 +493,35 @@ job_arrow:                              ; HL = arrow (2 x 4 characters: pattern 
         ld d,a
         ld b,16
         ld c,4
+        jp jq_put
+
+job_logo:                               ; PUZZLE MANIA XXXL on the tile rows 0..1 (the 16 pixels above the thumbnails); two halves of 14 tiles from the code bank
+        call job_room
+        xor a
+        ld (q_bank),a
+        ld (q_bank+1),a
+        ld (q_adj),a
+        ld (q_adj+1),a
+        ld hl,logo_dat
+        ld de,0x4010
+        call .h
+        call job_room
+        ld hl,logo_dat+448
+        ld de,0x4080
+.h:     push hl
+        push de
+        ld b,112
+        ld c,2
+        call jq_put
+        pop de
+        pop hl
+        ld bc,224
+        add hl,bc
+        ld a,d
+        add a,0x20
+        ld d,a
+        ld b,112
+        ld c,2
         jp jq_put
 
 job_rect:                               ; black: D = row, E = column * 8, B = bytes per row (up to 128), C = rows

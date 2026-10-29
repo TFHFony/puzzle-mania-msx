@@ -14,7 +14,7 @@ nametab: SETADDR 0x1800                 ; identity name table 0..255 three times
 
 sprpat: SETADDR 0x3800                  ; four corner sprites (8x8), sprite 4 = end of the list
         ld hl,sprdata
-        ld b,32
+        ld b,48
         ld c,0x98
 .l:     outi
         nop
@@ -27,6 +27,8 @@ sprdata: db 0xFF,0xFF,0xC0,0xC0,0xC0,0xC0,0xC0,0xC0
         db 0xFF,0xFF,0x03,0x03,0x03,0x03,0x03,0x03
         db 0xC0,0xC0,0xC0,0xC0,0xC0,0xC0,0xFF,0xFF
         db 0x03,0x03,0x03,0x03,0x03,0x03,0xFF,0xFF
+        db 0x00,0x7E,0x7E,0x7E,0x7E,0x7E,0x7E,0x00      ; confetti: square, diamond
+        db 0x18,0x3C,0x7E,0xFF,0xFF,0x7E,0x3C,0x18
 
 clrscr: SETADDR 0x0000                  ; all patterns 0, all colours black on black
         ld de,6144
@@ -71,6 +73,10 @@ setpb:  ld c,a                          ; A = photo, B = k -> bank 1 + 10 * phot
         inc a
         ld l,a
         ld h,0
+        push de
+        ld de,(v_pb)                    ; (the MSX2 version: the photos for their own palette)
+        add hl,de
+        pop de
         jr setbank
 
 ; blit: w*h chars (pattern + colour) from the page 2 window to the screen
@@ -564,7 +570,16 @@ geth:   ld a,(k3)
         ret                             ; Z = pressed
 
 keyedge:                                ; A = keys that went down since the last call: bit 0 L, bit 1 C, bit 2 T
-        ld c,0
+        ld a,(mus_on)                   ; (with music the slots of the player collect them: mus_ke, latched)
+        or a
+        jr z,.slow
+        ld a,(mus_ke)
+        ld b,a
+        xor a
+        ld (mus_ke),a
+        ld a,b
+        ret
+.slow:  ld c,0
         ld a,(k4)
         and 2
         jr nz,.nl
@@ -597,7 +612,12 @@ wait_release:                           ; until SPACE / RETURN / ESC / H are up
         ret
 
 ; getkey: A = orthogonal direction (1,3,5,7) on press / auto-repeat, else 0
-getkey: call getdir
+getkey: ld a,(mus_on)                   ; (with music the slots of the player have done this: mus_dkey)
+        or a
+        jr z,.slow
+        ld a,(mus_dkey)
+        ret
+.slow:  call getdir
         ld b,a
         and 1
         ld a,b

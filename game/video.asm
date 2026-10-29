@@ -1,6 +1,7 @@
 ; ------------------------------------------------------------------------------------------------ video player (runs in the overlay bank)
 ; vbank, vleft, vbase, vnf and v_xtra are set by play (vplay.asm, code bank)
-ov_main:
+ov_main: ld hl,0x8000
+        ld (vptr),hl
 vframe: ld a,(v_xtra)                   ; 8 fps ROM: one extra vertical blanking per frame (6 fields at 50 Hz, 7 at 60 Hz)
         or a
         jr z,.ne
@@ -23,15 +24,12 @@ vframe: ld a,(v_xtra)                   ; 8 fps ROM: one extra vertical blanking
         in a,(0xA2)
         and 0x10
         ret z
-        ld a,(vbank)
-        ld (0x7000),a
-        ld a,(vbank+1)
-        BANKHI 0x7001
+        call vsetb
         in a,(0x99)
 .wv:    in a,(0x99)
         rlca
         jr nc,.wv
-        ld hl,0x8000
+        ld hl,(vptr)
         ld c,0x98
         SETADDR 0x0000
         REPT BURST
@@ -45,30 +43,60 @@ vframe: ld a,(v_xtra)                   ; 8 fps ROM: one extra vertical blanking
         ld a,b
 .rest:  outi
         jp nz,.rest
+        call bchk
         SETADDR 0x2000
         call blk2k
+        call bchk
         SETADDR 0x0800
         call blk2k
+        call bchk
         SETADDR 0x2800
         call blk2k
+        call bchk
         SETADDR 0x1000
         call blk2k
+        call bchk
         SETADDR 0x3000
         call blk2k
-        ld hl,(vbank)
-        inc hl
-        ld (vbank),hl
+        call bchk
+        ld (vptr),hl
         ld hl,(vleft)
         dec hl
         ld (vleft),hl
         ld a,h
         or l
         jp nz,vframe
+        ld a,(att_on)                   ; attract mode: the clip plays once
+        or a
+        ret nz
         ld hl,(vbase)
         ld (vbank),hl
+        ld hl,0x8000
+        ld (vptr),hl
         ld hl,(vnf)
         ld (vleft),hl
         jp vframe
+
+vsetb:  ld a,(vbank)
+        ld (0x7000),a
+        ld a,(vbank+1)
+        BANKHI 0x7001
+        ret
+
+bchk:   ld a,h                          ; the frames are packed: a bank holds 8 blocks of 2 KB and a frame takes 6
+        cp 0xC0
+        ret nz
+        push hl
+        ld hl,(vbank)
+        inc hl
+        ld (vbank),hl
+        ld a,l
+        ld (0x7000),a
+        ld a,h
+        BANKHI 0x7001
+        pop hl
+        ld hl,0x8000
+        ret
 
 wr256:  ld b,0
 .l:     outi

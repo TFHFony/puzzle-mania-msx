@@ -1,8 +1,11 @@
 ; ------------------------------------------------------------------------------------------------ main menu
-; carousel: 9 photos in 5 columns of 2; two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..3)
+; carousel: NPHOTO (10) photos in 5 columns of 2; two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..3)
 draw_menu:
         call job_reset                  ; (jobs of the screen before are dropped)
+        ld a,PAL_MENU                   ; MSX2: the palette of the four thumbnails
+        call need_pal
         call job_mmargins               ; the music goes on: everything is drawn by the sample loop of the player
+        call job_logo
         call job_flush
         call menu_footer
         jp draw_page
@@ -50,7 +53,7 @@ draw_page:                             ; the four thumbnails and the arrows (job
         jr z,.c
         ld e,128
 .c:     ld a,(v_tmp)
-        cp 9
+        cp NPHOTO
         jr nc,.bl
         ld c,a                          ; bank of the photo = 1 + 10 * photo
         add a,a
@@ -60,6 +63,10 @@ draw_page:                             ; the four thumbnails and the arrows (job
         inc a
         ld l,a
         ld h,0
+        push de                         ; (D = row, E = column of the thumbnail)
+        ld de,(v_pb)
+        add hl,de
+        pop de
         call job_thumb
         jr .nx
 .bl:    ld b,104
@@ -92,6 +99,34 @@ draw_page:                             ; the four thumbnails and the arrows (job
         ld c,4
         jp job_rect
 
+att_show:                               ; the attract mode "picks" its photo: the carousel scrolls to it and the cursor stays on it for a moment (C = a key was pressed)
+        ld a,(v_photo)
+        srl a
+        cp 4
+        jr c,.w
+        ld a,3
+.w:     ld b,a
+        ld a,(v_win)
+        cp b
+        jr z,.nw
+        ld a,b
+        ld (v_win),a
+        call draw_page
+.nw:    ld a,(v_photo)
+        ld (v_sel),a
+        ld b,ATT_SHOW
+.f:     push bc
+        call mvsync
+        call menu_cursor
+        call anykey
+        pop bc
+        jr nz,.k
+        djnz .f
+        or a
+        ret
+.k:     scf
+        ret
+
 menu_cursor:
         ld a,(v_sel)
         srl a
@@ -115,9 +150,32 @@ menu_cursor:
 
 menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         call wait_release
+        call att_init
         call menu_cursor                ; (the loop only runs when something happens: the cursor has to be there at the start)
 .l:     call mvsync
-        ld a,(mus_busy)                 ; nothing to do: the counters run in the slots of the player, the gap stays short
+        call selchk
+        call anykey                     ; a key in the second half of the song: the song goes round again; no key: at its end the attract mode "selects" a photo
+        jr z,.ni
+        ld a,1
+        ld (att_act),a
+        jr .bz
+.ni:    call att_check
+        jr nc,.bz
+        call att_mute                   ; (the song is at its end: it runs on muted, the attract mode picks a photo and a size in silence)
+        call hidecursor
+        call att_pick
+        call att_show                   ; the cursor goes to the photo
+        jr c,.ab
+        call hidecursor
+        or a
+        ret
+.ab:    xor a
+        ld (att_on),a
+        call wait_release
+        call att_unmute
+        call att_init
+        jp .l
+.bz:    ld a,(mus_busy)                 ; nothing to do: the counters run in the slots of the player, the gap stays short
         or a
         jr z,.l
         call menu_cursor
@@ -148,7 +206,7 @@ menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         jp nz,.l
         ld a,(v_sel)
         inc a
-        cp 9
+        cp NPHOTO
         jp nc,.l
         ld (v_sel),a
         jp .l
@@ -170,17 +228,17 @@ menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         ld (v_win),a
         ld a,(v_sel)
         add a,2
-        cp 9
+        cp NPHOTO
         jr c,.s1
-        ld a,8
+        ld a,NPHOTO-1
 .s1:    ld (v_sel),a
         call draw_page
         jp .l
 .rr1:   ld a,(v_sel)
         add a,2
-        cp 9
+        cp NPHOTO
         jr c,.s2
-        ld a,8
+        ld a,NPHOTO-1
 .s2:    ld (v_sel),a
         jp .l
 .left:  ld a,(v_sel)
@@ -213,6 +271,9 @@ draw_size:
         call job_reset
         call job_black                  ; the music goes on: the screen is drawn by the sample loop of the player
         call job_flush
+        ld a,(v_photo)                  ; MSX2: the palette of the size buttons of the photo
+        add a,PAL_SIZE0
+        call need_pal
         ld hl,s_size
         ld d,0
         ld e,10
@@ -231,6 +292,10 @@ draw_size:
         add a,2
         ld l,a
         ld h,0
+        push de
+        ld de,(v_pb)
+        add hl,de
+        pop de
         ld (q_bank),hl
         ld hl,0
         ld (q_adj),hl
@@ -358,6 +423,7 @@ size_loop:
         call keyedge
         call size_cursor
 .l:     call mvsync
+        call selchk
         ld a,(mus_busy)
         or a
         jr z,.l

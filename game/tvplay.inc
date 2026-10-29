@@ -298,14 +298,14 @@ tv_end:
 tv_exit:
         ld a,8
         out (0xA0),a
-        xor a
+        ld a,(TABHI*256+0xC00)
         out (0xA1),a
         ld a,9
         out (0xA0),a
-        xor a
+        ld a,(TABHI*256+0xD00)
         out (0xA1),a
         ld a,10
         out (0xA0),a
-        xor a
+        ld a,(TABHI*256+0xE00)
         out (0xA1),a
         ret

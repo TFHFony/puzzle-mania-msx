@@ -26,7 +26,7 @@ def main(video, out):
     gdir = os.path.join(PROJ, 'game')
     subprocess.run([sys.executable, os.path.join(HERE, 'gen_slots.py')], check=True, capture_output=True)
     clock = json.load(open(os.path.join(HERE, 'clock.json')))
-    open(os.path.join(gdir, 'cfg.inc'), 'w').write('ASCII16 equ 1\nDIAG equ 0\nFREE equ 1\nTITLEVIDEO equ 1\nTVBANK equ 5\nTVFRAMES equ %d\nPLR_BANK equ 4\nTIETONLY equ 1\n' % n)
+    open(os.path.join(gdir, 'cfg.inc'), 'w').write('ASCII16 equ 1\nDIAG equ 0\nFREE equ 1\nTITLEVIDEO equ 1\nTVBANK equ 5\nTVFRAMES equ %d\nPLR_BANK equ 4\nTIETONLY equ 1\nBUILDID equ 0\nSCC equ 0\nMSX2PAL equ 0\nPBOFFS equ 0\nWELCOME2 equ 0\n' % n)
     open(os.path.join(gdir, 'clk.inc'), 'w').write('MDELAY equ %d\nFI_PAL equ %d\nFI_NTSC equ %d\n' % (clock['MDELAY'], clock['FI_PAL'], clock['FI_NTSC']))
     gen = 'WELCOME equ 1\nFONY equ 2\nHOWTO equ 0\nCREDITS equ 0\nSELFTEST equ 3\n'
     gen += 'mustab:\n' + '        dw 0,0\n        db 0,0,0,0\n' * 3
