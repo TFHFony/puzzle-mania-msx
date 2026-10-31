@@ -3,9 +3,9 @@
 ; (v_pb = offset of its banks) is shown and the palette registers of the V9938 are loaded: TMS (own screens, videos), menu (the four thumbnails), photo p, title photo.
 PAL_TMS    equ 0
 PAL_MENU   equ 1
-PAL_PHOTO0 equ 2                        ; 2..11
-PAL_TITLE  equ 12
-PAL_SIZE0  equ 13                       ; 13..22: the size menu of photo p (the four buttons: a palette without the colours of the puzzle screen)
+PAL_PHOTO0 equ 2                        ; 2 .. 2 + NPHOTO - 1
+PAL_TITLE  equ PAL_PHOTO0 + NPHOTO
+PAL_SIZE0  equ PAL_TITLE + 1            ; PAL_TITLE + 1 ..: the size menu of photo p (the four buttons: a palette without the colours of the puzzle screen)
         IF MSX2PAL
 msx_init:                               ; MSX version (BIOS 002Dh): 0 = MSX1
         ld a,(0x002D)

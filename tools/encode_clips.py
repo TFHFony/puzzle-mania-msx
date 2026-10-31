@@ -13,7 +13,7 @@ import msx1_video as V
 H, W = 192, 256
 CLIPS = ['clip.mp4', 'Easter2025.mp4', 'FH.mp4', 'File-Hunter-25.mp4', 'Fony-35.mp4', 'MSXdev-20.mp4', 'Oops2.mp4', 'PM.m4v', 'Puzzle.mp4',
          'www.file-hunter.com2022.mp4', 'STEF-1.mp4']
-USED = [0, 10, 2, 3, 4, 5, 7, 8, 9, 1]      # photo p = clip USED[p]
+USED = [0, 10, 2, 3, 4, 5, 7, 8, 9, 1, 6]   # photo p = clip USED[p]
 GRADE = {10: 'eq=saturation=1.2:contrast=1.05'}                            # ffmpeg filter (black level / saturation / contrast) in front of the encoder, per clip
 FPS = 10
 LITE_FPS = 50 / 6                           # one frame per 6 fields on a 50 Hz machine (8.33 fps; 8.57 fps on 60 Hz with 7 fields)
@@ -66,7 +66,7 @@ def main():
         t0 = time.time()
         frames, n = extract(i, lite)
         tasks = [(frames, n, s, min(n, s + 38), 'col15') for s in range(0, n, 38)]
-        with mp.Pool(22) as pool:
+        with mp.Pool(8) as pool:
             res = sorted(pool.imap_unordered(V.work, tasks), key=lambda r: r[0])
         np.savez(f, pat=np.concatenate([r[1] for r in res]), col=np.concatenate([r[2] for r in res]))
         os.remove(frames)

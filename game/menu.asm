@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------------------------ main menu
-; carousel: NPHOTO (10) photos in 5 columns of 2; two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..3)
+; carousel: NPHOTO (11) photos in 6 columns of 2 (the last one has one photo); two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..MAXWIN)
 draw_menu:
         call job_reset                  ; (jobs of the screen before are dropped)
         ld a,PAL_MENU                   ; MSX2: the palette of the four thumbnails
@@ -90,7 +90,7 @@ draw_page:                             ; the four thumbnails and the arrows (job
         call job_rect
 .rr:    call job_room
         ld a,(v_win)
-        cp 3
+        cp MAXWIN
         ld de,0x0AF0
         jr z,.nr
         ld hl,arrow_r
@@ -102,9 +102,9 @@ draw_page:                             ; the four thumbnails and the arrows (job
 att_show:                               ; the attract mode "picks" its photo: the carousel scrolls to it and the cursor stays on it for a moment (C = a key was pressed)
         ld a,(v_photo)
         srl a
-        cp 4
+        cp MAXWIN + 1
         jr c,.w
-        ld a,3
+        ld a,MAXWIN
 .w:     ld b,a
         ld a,(v_win)
         cp b
@@ -222,7 +222,7 @@ menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         ld a,(v_win)
         cp b
         jr z,.rr1                       ; left column: move to the right column
-        cp 3
+        cp MAXWIN
         jp nc,.l
         inc a                           ; right column: scroll one column
         ld (v_win),a

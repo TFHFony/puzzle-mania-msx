@@ -17,9 +17,10 @@ from stills import encode
 from encode_clips import CLIPS, USED
 
 STRIDE = 10                 # banks per photo
-WELCOME, FONY, HOWTO, CREDITS, SELFTEST = 101, 102, 103, 106, 107        # behind the 10 photos of 10 banks (game/equ.inc NPHOTO)
+W0 = 1 + STRIDE * len(USED)                                                # behind the photos of 10 banks each (game/equ.inc NPHOTO = len(USED))
+WELCOME, FONY, HOWTO, CREDITS, SELFTEST = W0, W0 + 1, W0 + 2, W0 + 5, W0 + 6
 PLR_BANK = 254
-TITLEV, MUSIC0 = 108, 109    # TITLEV: the first picture of the title video (the 128 MB ROM)
+TITLEV, MUSIC0 = W0 + 7, W0 + 8    # TITLEV: the first picture of the title video (the 128 MB ROM)
 VIDEO0 = 256                # 4 MB for the game, the video starts here
 WELCOME_PHOTO = 7           # the letters of the title are filled with this photo (clip id)
 # puzzle geometry per size N: (tile width, tile height, offset x, offset y) in characters

@@ -175,6 +175,7 @@ if __name__ == '__main__':
     if sys.argv[1:2] == ['size']:
         res = json.load(open(PJSON))
         res.setdefault('size', [None] * len(srcs))
+        res['size'] += [None] * (len(srcs) - len(res['size']))
         from concurrent.futures import ProcessPoolExecutor
         todo = [p for p in range(len(srcs)) if not res['size'][p]]
         with ProcessPoolExecutor(max_workers=min(8, len(todo)) or 1) as ex:            # one process per photo (the photos are independent)
@@ -186,6 +187,7 @@ if __name__ == '__main__':
     res = json.load(open(PJSON)) if os.path.exists(PJSON) else {}
     res['tms'] = TMS.astype(int).tolist()
     res.setdefault('photo', [None] * len(srcs))
+    res['photo'] += [None] * (len(srcs) - len(res['photo']))
     for p, s in enumerate(srcs):
         if res['photo'][p]:
             continue
