@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------------------------ main menu
-; carousel: NPHOTO (11) photos in 6 columns of 2 (the last one has one photo); two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..MAXWIN)
+; carousel: NPHOTO (12) photos in 6 columns of 2; two columns (4 photos, 104x80 px each) are visible, v_win = first visible column (0..MAXWIN)
 draw_menu:
         call job_reset                  ; (jobs of the screen before are dropped)
         ld a,PAL_MENU                   ; MSX2: the palette of the four thumbnails
