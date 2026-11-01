@@ -36,7 +36,14 @@ scc_scan:                               ; look for an SCC in all slots but our o
         ld hl,v_own
         cp (hl)
         jr z,.skip
-        call scc_try
+        ld b,a
+        bit 7,(hl)
+        jr nz,.go
+        ld a,(hl)                       ; (our cartridge sits in an unexpanded slot: never probe that primary slot, whatever the sub slot bits say)
+        xor b
+        and 3
+        jr z,.skip
+.go:    call scc_try
         jr z,.found
 .skip:  ld a,(v_i)
         inc a

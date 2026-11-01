@@ -1,2 +1,2 @@
-PuzzleMania_128MB.rom           119111680 bytes  md5 dff16ac3ad6f60e63066427a6e1ae4fa
+PuzzleMania_128MB.rom           119111680 bytes  md5 db9a0e5185bd9b1a0c20f2026091b030
 PuzzleMania_64MB.rom             66846720 bytes  md5 4beffc0157305f5739ba3eab163bf898

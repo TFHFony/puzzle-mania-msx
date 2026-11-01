@@ -35,11 +35,14 @@ init:   di
         rrca
         rrca
         and 3
-        ld c,a
+        ld c,a                          ; primary slot
         ld b,0
         ld hl,0xFCC1
         add hl,bc
-        or (hl)
+        ld a,(hl)
+        and 0x80                        ; EXPTBL: expanded?  Only then SLTTBL means something (it is FFh for an unexpanded slot on some machines, e.g. the OneChipMSX)
+        jr z,.ne
+        or c
         ld c,a
         inc hl
         inc hl
@@ -48,6 +51,8 @@ init:   di
         ld a,(hl)
         and 0x0C
         or c
+        ld c,a
+.ne:    ld a,c
         ld (v_own),a                    ; the slot of our cartridge
         ld h,0x80
         call 0x0024                     ; ENASLT
