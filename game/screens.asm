@@ -69,6 +69,44 @@ wt_go:                                  ; the VDP wait state test: out of the ba
         jp WT_RAM
 
 ; ------------------------------------------------------------------------------------------------ wipes: full screen pictures, drawn with the block routines
+start_col:                              ; the screen of SCREEN 2 gets the colour that the MSX started with (v_bc; black or transparent: black), the border too
+        ld a,(v_bc)
+        cp 2
+        jr nc,.k
+        ld a,1
+.k:     ld b,a
+        SETADDR 0x2000                  ; the colour table: this colour on this colour (the patterns are empty after CHGMOD); (SETADDR changes A: the byte is made after it)
+        ld a,b
+        add a,a
+        add a,a
+        add a,a
+        add a,a
+        or b
+        ld de,6144
+.f:     out (0x98),a
+        dec de
+        ld c,a
+        ld a,d
+        or e
+        ld a,c
+        jr nz,.f
+        ld a,b
+        out (0x99),a
+        ld a,0x87
+        out (0x99),a
+        ret
+
+start_black:                            ; a black wipe of the start colour, then the border goes black too (the start colour is only used here: from now on every screen is black)
+        ld a,(v_bc)
+        cp 2
+        ret c
+        call wipe_clear
+        ld a,1
+        out (0x99),a
+        ld a,0x87
+        out (0x99),a
+        ret
+
 wipe_clear:                             ; black wipe from the top and the bottom to the middle (12 frames)
         ld a,32
         ld (b_w),a
@@ -156,39 +194,27 @@ showpic:                                ; HL = bank of a full screen picture
         jp blit
 
 ; ------------------------------------------------------------------------------------------------ intro: FONY logo, title; help and credits
-welcome:                                ; the FONY logo of the disk version with its jingle (SPACE skips), then the PUZZLE MANIA title until SPACE
-        ld a,2                          ; track 2: the jingle (0.7 s of silence in front: it starts when the colours of the logo are in)
-        ld c,0
-        call music_play
-        IF MSX2PAL
-        ld a,(v_msx)
+welcome:                                ; the FONY film (SPACE skips it), then the PUZZLE MANIA title until SPACE; the screen is black (SCREEN 2)
+        ld a,FONYPAL                    ; MSX2 and later: the palette of the film (on an MSX1 nothing happens)
+        call need_pal
+        IF SCC
+        ld a,(v_sccm)
         or a
-        jr z,.m1
-        call intro                      ; MSX2 and later: the logo in SCREEN 5 with its colours coming in one by one (intro.asm), back in SCREEN 2
-        call nametab
-        call sprpat
-        jr .go
-.m1:
+        jr z,.nos
+        call scc_tvstart                ; an SCC: its own stream (fony16.inc): channel 1 at full volume
+.nos:
         ENDIF
-        ld hl,FONY                      ; MSX1: the same picture in the 15 colours of the TMS9918A, with the wipe
-        call wipe_in
-        ld a,(v_hz)                     ; the logo stays 2.52 s from the start (the wipe is 12 frames)
-        cp 50
-        ld b,114
-        jr z,.f
-        ld b,139
-.f:     push bc
-        call mvsync
-        call getfire
-        pop bc
-        jr nz,.sk
-        djnz .f
-.sk:    call music_stop
+        call ovl_fony                   ; the film with its sound (fonyplay.asm), carry = a key stopped it
+        push af
+        IF SCC
+        call scc_off
+        ENDIF
+        call music_stop
+        pop af
         call wait_release
         call wipe_clear
-        jr title
-.go:    call music_stop
-        call wait_release
+        ld a,PAL_TMS
+        call need_pal
 title:                                  ; the PUZZLE MANIA title for the length of the song (SPACE / fire skips it)
         IF TITLEVIDEO
         ld a,(v_tit)                    ; the video and the photo take turns
@@ -212,16 +238,22 @@ title:                                  ; the PUZZLE MANIA title for the length 
         jr .t16e
 .t16w:  call w_tvplay16
 .t16e:  call scc_off
-        jp wait_release
+        jr .tvend
 .tvp:
         ENDIF
         ld a,(v_tvd)                    ; video and music in one stream (tvplay.inc, tv8_tvplay: 8 cycles less per iteration for a VDP wait state)
         or a
         jr nz,.tvw
         call tvplay
-        jp wait_release
+        jr .tvend
 .tvw:   call tv8_tvplay
-        jp wait_release
+.tvend: call getfire                    ; the song is over (no key): the last shot falls apart as a jigsaw (jigplay.asm), on the palette of the video
+        jr nz,.tvr
+        ld hl,JIGV
+        ld (vbank),hl
+        call ovl_jig
+        call nc,xxxl
+.tvr:   jp title_end
 .photo: xor a
         ld (v_tit),a
         ENDIF
@@ -263,7 +295,47 @@ title:                                  ; the PUZZLE MANIA title for the length 
         ld a,h
         or l
         jr nz,.w
-.d:     jp wait_release
+        call music_stop                 ; the song is over: the title falls apart as a jigsaw (jigplay.asm); the menu starts its song again
+        ld hl,JIGP1
+        IF MSX2PAL
+        ld a,(v_msx)
+        or a
+        jr z,.j1
+        ld hl,JIGP2
+.j1:
+        ENDIF
+        ld (vbank),hl
+        call ovl_jig
+        call nc,xxxl
+.d:     jp title_end
+
+title_end:                              ; the title is over: a black wipe before the menu is drawn (not while the music plays: the wipe would disturb it)
+        call wait_release
+        ld a,(mus_on)
+        or a
+        ret nz
+        jp wipe_clear
+
+xxxl:                                   ; after the jigsaw outro: the letters XXXL filled with the photo of the Oops clip, a few seconds, no sound (tools/xxxl_logo.py)
+        ld hl,XXXL1
+        ld a,PAL_TMS
+        IF MSX2PAL
+        ld c,a
+        ld a,(v_msx)
+        or a
+        ld a,c
+        jr z,.x1
+        ld hl,XXXL2
+        ld a,XXXLPAL
+.x1:
+        ENDIF
+        push hl
+        call need_pal
+        pop hl
+        call wipe_in
+        ld c,0x80                       ; the dreun of the film (the end of its sound) as a sample, a plain loop (sndplay.asm): the screen stays until it is over (a key stops it)
+        call ovl_snd
+        jp wait_release
 
 ; the help and the credits are drawn at once (a wipe would disturb the music); the wipes above only run while the music is not playing yet
 howto:                                  ; two pages, SPACE = next, ESC = leave

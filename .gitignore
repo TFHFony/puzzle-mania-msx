@@ -45,3 +45,10 @@ tools/palettes.json.bak9
 .claude/waitstate-tools/lm/
 .claude/logomusic-tools/lm/
 *.dsk
+game/fony.inc
+game/fonyw.inc
+game/fony16.inc
+game/fony16w.inc
+game/fonycfg.inc
+game/fonytab.inc
+game/memcfg.inc

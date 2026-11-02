@@ -96,7 +96,7 @@ wt_run: di
         ld de,0xFD9F
         ld bc,3
         ldir
-        ld a,0xC0                       ; R#1: the screen as it was (16K, display on, no interrupt)
+        ld a,0x80                       ; R#1: 16K, display off, no interrupt: the test has dirtied the colour table, the game puts it right and then switches the display on (pm.asm)
         out (0x99),a
         ld a,0x81
         out (0x99),a

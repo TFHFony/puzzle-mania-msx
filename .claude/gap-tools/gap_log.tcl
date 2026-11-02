@@ -25,13 +25,13 @@ after time 100 { log "watchdog: stuck at step $::cur"; save; exit }
 proc tick {} { log "st cur=$::cur hz=[peek 0xC00F] size=[peek 0xC001] n2=[peek 0xC024] trk=[peek 0xC0D1] gs=[peek 0xC0DF] att=[peek 0xC1F7]"; after time 5 tick }
 after time 5 tick
 if {$::MODE eq "attract"} {
-  dstep {[peek 0xC00F] == 50} { }
+  dstep {[peek 0xC00F] == 50 || [peek 0xC00F] == 60} { }
   dstep {[peek 0xC1F7] == 1 && [peek 0xC0D0] == 1 && [peek 0xC0D1] == 1} { }
   dpause 2.5
   dstep 1 { setk; set ::on 1; set ::tstart [machine_info time]; log "attract sz=[peek 0xC380] size=[peek 0xC001]" }
   dstep {[machine_info time] - $::tstart > 30 || [peek 0xC1F7] == 0} { set ::on 0; save; exit }
 } else {
-  dstep {[peek 0xC00F] == 50} { }
+  dstep {[peek 0xC00F] == 50 || [peek 0xC00F] == 60} { }
   dpause 5.5
   dstep 1 { key 8 0x01 0.2 }
   dpause 3.5

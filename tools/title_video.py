@@ -13,7 +13,7 @@ sys.path.insert(0, HERE)
 IT_FRAME = 2 + 24 * (32 + 32 + 1)            # iterations (= sample bytes) of a frame
 SAMPLE_RATE = 3579545.0 / 446                # Hz
 TITLE_GRADE = 'eq=saturation=1.2:contrast=1.05'      # look B of the STEF-1 clip (black level / saturation / contrast), in front of the colour steps of _enc
-FADE_OUT = 2.0                               # s: the title video fades to black at its end
+FADE_OUT = 0.0                               # s: the title video fades to black at its end (0: no fade, the last shot falls apart as a jigsaw: tools/jigsaw.py)
 SAMPLE_RATE_PSG = int(round(SAMPLE_RATE))      # 8026 Hz: what the loop of game/tvplay.inc plays
 PSG_FRAME_CYCLES = IT_FRAME * 446            # one video frame of the PSG loop (game/tvplay.inc)
 SCC_FRAME_CYCLES = 719490                    # one video frame of the SCC loop (game/tvplay16.inc: 1612 iterations, the address iterations and the frame ends take more; measured in openMSX)
@@ -150,6 +150,17 @@ WARM = {0, 1, 6, 8, 9, 10, 11, 13, 14, 15}       # black, dark red, medium red, 
 SAT, GAMMA = 1.5, 0.85
 
 
+def grade(frame, lo, hi):
+    """the look of the title video: one contrast stretch for the whole clip (no flicker), saturation, gamma"""
+    from PIL import ImageEnhance
+    a = np.clip((frame.astype(np.float32) - lo) / (hi - lo), 0, 1)
+    im = ImageEnhance.Color(Image.fromarray((a * 255 + 0.5).astype(np.uint8))).enhance(SAT)
+    return (np.clip(np.asarray(im).astype(np.float32) / 255, 0, 1) ** GAMMA * 255 + 0.5).astype(np.uint8)
+
+
+LAST_GRADED = None                           # the last shot of the clip, whole picture, graded like the frames (set by encode_parallel: the jigsaw outro grows it out of the letters)
+
+
 def _enc(args):
     sys.path.insert(0, r'F:\MSX Projects\Dev27\msx1-video-player	ools')
     import screen4_sim as S, stills
@@ -159,9 +170,7 @@ def _enc(args):
     keep = [i for i in range(len(S.PI)) if int(S.PI[i]) in WARM and int(S.PJ[i]) in WARM]
     stills.PI = S.PI[keep]; stills.PJ = S.PJ[keep]
     m = letter_mask()
-    a = np.clip((frame.astype(np.float32) - lo) / (hi - lo), 0, 1)          # one contrast stretch for the whole clip (no flicker)
-    im = ImageEnhance.Color(Image.fromarray((a * 255 + 0.5).astype(np.uint8))).enhance(SAT)
-    L = (np.clip(np.asarray(im).astype(np.float32) / 255, 0, 1) ** GAMMA * 255 + 0.5).astype(np.uint8)
+    L = grade(frame, lo, hi)
     img = np.zeros((192, 256, 3), np.uint8)
     img[m] = (L[m].astype(np.float32) * fade + 0.5).astype(np.uint8)       # the last FADE_OUT seconds fade to black
     d, rend = B.coded(img, (~m).astype(np.int8))
@@ -174,9 +183,11 @@ def encode_parallel(frames, fps=None):
     lum = np.stack(frames[::3]).astype(np.float32).mean(-1)[:, m]
     lo, hi = float(np.percentile(lum, 1)), float(np.percentile(lum, 99))
     print('contrast stretch of the clip: %.0f .. %.0f' % (lo, hi), flush=True)
-    with ProcessPoolExecutor(max_workers=min(12, os.cpu_count() or 4)) as ex:
+    global LAST_GRADED
+    LAST_GRADED = grade(frames[-1], lo, hi)
+    with ProcessPoolExecutor(max_workers=8) as ex:
         n = len(frames)
-        fade = lambda k: min(1.0, (n - 1 - k) / (FADE_OUT * (fps or SAMPLE_RATE / IT_FRAME)))
+        fade = lambda k: min(1.0, (n - 1 - k) / (FADE_OUT * (fps or SAMPLE_RATE / IT_FRAME))) if FADE_OUT > 0 else 1.0
         return list(ex.map(_enc, [(f, lo, hi, fade(k)) for k, f in enumerate(frames)], chunksize=2))
 
 

@@ -1,5 +1,5 @@
 """Build everything from the sources in one go:   python tools/build_all.py [--fresh] [--only 128|64]
-  1. FONY logo screen          (assets/fony_disk: the logo of the old disk -> work/fony_disk.bin, work/fony5.bin, game/fonyov.inc; assets/fony_jingle.wav = its jingle)
+  1. FONY intro film           (tools/fony_video.py: F:/MSX Projects/Dev27/FONY.mp4; the old disk logo of tools/fony_intro.py is no longer built)
   2. video clips               (full 10 fps + shortened 8.33 fps with fade-out) and the candidate stills, only when missing
   3. the ROMs                  PuzzleMania_128MB.rom (full length clips, a video in the letters of the title), PuzzleMania_64MB.rom (shortened clips, the photo in the title)
   4. PuzzleMania_checksums.txt (sizes and MD5)

@@ -3,11 +3,13 @@
   --lite   64 MB version: shortened 8.33 fps clips with fade-out (work/lite_clipNN_bytes.npz); without it: the full clips at 10 fps
   --kmenu/--kpuz K (--kmenub/--kpuzb: frames with work after the block, --kmenuc/--kpuzc: the frame of an action) skipped samples per frame of that track; its music is coded for it (defaults 2/5/6 menu, 2/5/4 puzzle)
   --curve  PSG volume curve of the music (default: the neutral curve 'joint'; 'ym' and 'ay' are test options)
-Needs work/clipNN_bytes.npz (encode_clips.py), work/stills (stills.py), work/fony_disk.bin + work/fony5.bin + game/fonyov.inc (fony_intro.py); photo choice per clip: tools/choices.json
+Needs work/clipNN_bytes.npz (encode_clips.py), work/stills (stills.py), photo choice per clip: tools/choices.json
 ROM banks: 0 game | 1 + 10 p + k: photo p, k = 0 plain image + thumbnail, 1 size buttons, 2..5 thick tile lines 3x3..6x6, 6..9 thin tile lines |
-           WELCOME, FONY, HOWTO x3, CREDITS, SELFTEST | title video picture, menu music, puzzle music | VIDEO0..: video frames, one per bank
+           WELCOME, HOWTO x3, CREDITS, SELFTEST | title video picture, menu music, puzzle music | VIDEO0..: video frames, one per bank
 """
 import os, sys, json, subprocess, pickle
+for _v in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS'):
+    os.environ.setdefault(_v, '1')              # one thread per worker process: the work is split over 8 processes, not 8 x the cores of the machine
 import numpy as np
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__)); PROJ = os.path.dirname(HERE)
@@ -18,9 +20,9 @@ from encode_clips import CLIPS, USED
 
 STRIDE = 10                 # banks per photo
 W0 = 1 + STRIDE * len(USED)                                                # behind the photos of 10 banks each (game/equ.inc NPHOTO = len(USED))
-WELCOME, FONY, HOWTO, CREDITS, SELFTEST = W0, W0 + 1, W0 + 2, W0 + 5, W0 + 6
+WELCOME, HOWTO, CREDITS, SELFTEST = W0, W0 + 1, W0 + 4, W0 + 5
 PLR_BANK = 254
-TITLEV, MUSIC0 = W0 + 7, W0 + 8    # TITLEV: the first picture of the title video (the 128 MB ROM)
+TITLEV, MUSIC0 = W0 + 6, W0 + 7    # TITLEV: the first picture of the title video (the 128 MB ROM)
 VIDEO0 = 256                # 4 MB for the game, the video starts here
 WELCOME_PHOTO = 7           # the letters of the title are filled with this photo (clip id)
 # puzzle geometry per size N: (tile width, tile height, offset x, offset y) in characters
@@ -164,9 +166,9 @@ def packed(pat, col):
 
 
 def build_assets(choices, fresh):
-    """photo banks, title, FONY, how to play, credits (cached: they take a few minutes)"""
+    """photo banks, title, how to play, credits (cached: they take a few minutes)"""
     pk = os.path.join(PROJ, 'work', 'assets.pkl')
-    key = (choices, USED, 'v4', os.path.getmtime(os.path.join(HERE, 'title_video.py')), os.path.getmtime(os.path.join(HERE, 'screens.py')), os.path.getmtime(os.path.join(PROJ, 'work', 'fony_disk.bin')))
+    key = (choices, USED, 'v5', os.path.getmtime(os.path.join(HERE, 'title_video.py')), os.path.getmtime(os.path.join(HERE, 'screens.py')))
     if os.path.exists(pk) and not fresh:
         k, banks = pickle.load(open(pk, 'rb'))
         if k == key:
@@ -185,7 +187,6 @@ def build_assets(choices, fresh):
     wb, wr = welcome_image(os.path.join(PROJ, 'work', 'stills', 'clip%02d_%d_src.png' % (WELCOME_PHOTO, choices[WELCOME_PHOTO])))
     Image.fromarray(wr).save(os.path.join(prev, 'welcome.png'))
     banks.append(wb)
-    banks.append(pad(open(os.path.join(PROJ, 'work', 'fony_disk.bin'), 'rb').read()))          # the FONY logo of the disk (tools/fony_intro.py)
     for n in ('howto1', 'howto2', 'howto3', 'credits'):          # howto3 is not used any more: an empty bank keeps the layout
         if n == 'howto3':
             banks.append(pad(b''))
@@ -229,6 +230,42 @@ def build_msx2_assets(choices, fresh):
     return banks, tab
 
 
+def build_jigsaw(choices, tv_last, last_graded, msx2, fresh):
+    """the jigsaw outros of the title screens (tools/jigsaw.py): the photo of the title for the TMS palette and (msx2) for the palette of the photo, the last shot of the title video.
+    -> (banks of the photo stream, banks of the MSX2 photo stream or [], banks of the video stream or []); cached: it takes a while"""
+    import jigsaw, title_video, palette_opt as PO
+    from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+    png = os.path.join(PROJ, 'work', 'stills', 'clip%02d_%d_src.png' % (WELCOME_PHOTO, choices[WELCOME_PHOTO]))
+    mt = lambda f: os.path.getmtime(f)
+    key = (choices, 'v1', mt(os.path.join(HERE, 'jigsaw.py')), mt(png), PO.LOOK, mt(PO.PJSON) if msx2 else 0, msx2, None if tv_last is None else (bytes(tv_last), last_graded.tobytes()))
+    pk = os.path.join(PROJ, 'work', 'jigsaw.pkl')
+    if os.path.exists(pk) and not fresh:
+        k, res = pickle.load(open(pk, 'rb'))
+        if k == key:
+            return res
+    mask = title_video.letter_mask()
+    src = Image.open(png).convert('RGB')
+    jobs = {}
+    photo1 = np.asarray(lift(src))
+    jobs['p1'] = (jigsaw.Scene(photo1, mask), welcome_image(png)[0][:12288], None, False)
+    if msx2:
+        pj = PO.load(); pal2 = np.array(pj['photo'][USED.index(WELCOME_PHOTO)], np.float32)
+        look = lambda im: PO.adjust(im, **PO.LOOK)
+        jobs['p2'] = (jigsaw.Scene(np.asarray(look(src)), mask), welcome_image(png, pal2, look)[0][:12288], pal2, False)
+    if tv_last is not None:
+        jobs['v'] = (jigsaw.Scene(last_graded, mask), bytes(tv_last), None, True)
+    res = {}
+    with ProcessPoolExecutor(max_workers=8) as ex, ThreadPoolExecutor(max_workers=len(jobs)) as th:
+        futs = {name: th.submit(jigsaw.build, sc, start, pal, ex, full, lambda m, n=name: print(n, m, flush=True)) for name, (sc, start, pal, full) in jobs.items()}
+        for name, f in futs.items():
+            banks, info, _ = f.result()
+            print('jigsaw', name, info, flush=True)
+            res[name] = banks
+    res = (res['p1'], res.get('p2', []), res.get('v', []))
+    pickle.dump((key, res), open(pk, 'wb'))
+    return res
+
+
 def main():
     arg = lambda name, default=None: sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
     lite = '--lite' in sys.argv
@@ -261,6 +298,7 @@ def main():
     MENU_S = MUSIC0; PM_S = MENU_S + len(mus_menu) // 16384; PM_E = PM_S + len(mus_pm) // 16384
     assert len(banks) == PM_E and len(banks) <= VIDEO0, (len(banks), PM_E)
     tvbase = tvn = 0
+    tv_last = None
     tvb = []
     if '--titlevideo' in sys.argv:                  # a video in the letters of the title, with the music in the same stream (tools/title_video.py, game/tvplay.inc)
         import title_video
@@ -268,6 +306,7 @@ def main():
         nf = int(arg('--titleframes', '0')) or title_video.frames_of(os.path.join(PROJ, 'PM-Menu.mp3'))
         tvw, tvb, tvn, tvdatas = title_video.build(tvv, title_video.TITLE_START, nf, None, None, os.path.join(PROJ, 'PM-Menu.mp3'), encode=title_video.encode_parallel)
         banks[TITLEV] = tvw                         # the photo title stays in WELCOME
+        tv_last = tvdatas[-1]                       # the last shot: the jigsaw outro (tools/jigsaw.py) starts from it
         if ascii16:                                 # ASCII16: the stream sits behind the music; NEO16: at the start of the video banks
             tvbase = len(banks)
             banks += tvb
@@ -305,36 +344,75 @@ def main():
             tvdatas16 = title_video.frames16(tvv, title_video.TITLE_START, tvn16)
             mus16 += title_video.build16(tvdatas16, tvn16, os.path.join(PROJ, 'PM-Menu.mp3'))
             TV16 = M16_E
-    EX0 = b + len(msx2banks) + len(mus16)                                       # behind everything: the FONY logo for the SCREEN 5 of an MSX2, the jingle (PSG 8 kHz: 2 banks, SCC 16 kHz: 3 banks)
-    import fony_intro
-    jwav = os.path.join(PROJ, 'assets', 'fony_jingle.wav')
-    jing8 = music.track('fony', jwav, gapk=kmenu)
-    jing16 = music.track16('fony', jwav, gapk=kmenu) if scc else b''
-    jwin = os.path.join(PROJ, 'assets', 'fony_jingle_win.wav')                    # the same jingle without the silence in front: the win jingle (track 3)
-    jingw8 = music.track('fonywin', jwin, gapk=kmenu)
-    jingw16 = music.track16('fonywin', jwin, gapk=kmenu) if scc else b''
-    extra = [fony_intro.msx2_bank()] + [t[k:k + 16384] for t in (jing8, jing16, jingw8, jingw16) for k in range(0, len(t), 16384)]
-    FONY5B = EX0; J8_S = EX0 + 1; J8_E = J8_S + len(jing8) // 16384; J16_S = J8_E; J16_E = J16_S + len(jing16) // 16384; JW8_S = J16_E; JW8_E = JW8_S + len(jingw8) // 16384; JW16_S = JW8_E; JW16_E = JW16_S + len(jingw16) // 16384
+    EX0 = b + len(msx2banks) + len(mus16)                                       # behind everything: the jingle (PSG 8 kHz: 2 banks, SCC 16 kHz: 3 banks)
+    import jingle                                                  # the jingle (intro and win): tools/jingle.py, game/sndplay.asm
+    jing8 = jingle.psg()                                                        # (PSG: 2 banks, SCC: 4 banks; the SCC banks are left out of a build without the SCC)
+    jing16 = jingle.scc() if scc else b''
+    extra = [t[k:k + 16384] for t in (jing8, jing16) for k in range(0, len(t), 16384)]
+    if not (quick or ascii16) or '--jigsaw' in sys.argv:                        # the jigsaw outros of the title screens (they take a while the first time, then they are cached)
+        import title_video
+        jp1, jp2, jv = build_jigsaw(choices, tv_last, title_video.LAST_GRADED if tvn else None, msx2, '--fresh' in sys.argv)
+    else:
+        jp1 = jp2 = jv = [pad(bytes([254]))]                                    # (a test ROM: the outro is empty)
+    JIGP1 = EX0 + len(extra); JIGP2 = JIGP1 + len(jp1); JIGV = JIGP2 + len(jp2)
+    extra += jp1 + jp2 + jv
+    import xxxl_logo                                                            # the XXXL screen after the jigsaw outro (tools/xxxl_logo.py)
+    xx1, xx2 = xxxl_logo.banks(choices, msx2)
+    XXXL1 = EX0 + len(extra); XXXL2 = XXXL1 + 1; XXXLPAL = 2 + USED.index(xxxl_logo.PHOTO_CLIP)       # (the palette of that photo: PAL_PHOTO0 + its place in USED)
+    extra += [xx1, xx2]
+    import fony_video                                                           # the FONY intro film (tools/fony_video.py): streams for PSG / SCC, MSX1 / MSX2
+    fv = fony_video.build(msx2, scc, int(arg('--fonyframes')) if arg('--fonyframes') else None)
+    boomp = jingle.boom(False); booms = jingle.boom(True) if scc else b''                       # the dreun of the film for the XXXL screen (tools/jingle.py boom)
+    BOOMP = EX0 + len(extra); extra += [boomp[k:k + 16384] for k in range(0, len(boomp), 16384)]
+    BOOMS = EX0 + len(extra); extra += [booms[k:k + 16384] for k in range(0, len(booms), 16384)]
+    FYP1 = EX0 + len(extra); extra += fv['p1']
+    FYP2 = EX0 + len(extra); extra += fv['p2']
+    FYS1 = EX0 + len(extra); extra += fv['s1']
+    FYS2 = EX0 + len(extra); extra += fv['s2']
+    FONYPAL = len(paltab) // 32 if msx2 else 0                                  # (its palette: the last one of the palette table)
+    if msx2:
+        paltab = paltab + fv['pal']
+    import choice_thumbs, memory_cards                                          # the memory game (game/memplay.asm, game/mem.asm): the cards and their palette; the choice screen (MSX2: a menu palette with a blue, its thumbnails)
+    ct = choice_thumbs.build() if msx2 else None
+    CHTH0 = EX0 + len(extra) if msx2 else 0
+    if msx2:
+        extra += ct['banks']
+    CHOICEPAL = len(paltab) // 32 if msx2 else 0
+    if msx2:
+        paltab = paltab + ct['pal']
+    mc = memory_cards.build(ct['x'] if msx2 else 5)
+    open(os.path.join(PROJ, 'game', 'memdata.bin'), 'wb').write(mc['data'])
+    MEMPAL = len(paltab) // 32 if msx2 else 0
+    if msx2:
+        paltab = paltab + mc['pal']
+    MEMB = len(banks) + (sum(nb) if ascii16 else 0)                              # a free bank below PLR_BANK - 1: page 1 is switched to it with two writes (low, high byte), so the high byte must be 0 like that of OVLB
+    assert MEMB < PLR_BANK - 1, MEMB
+    open(os.path.join(PROJ, 'game', 'memcfg.inc'), 'w').write('MEMB equ %d\nMEMPAL equ %d\nCHTH0 equ %d\nCHOICEPAL equ %d\n' % (MEMB, MEMPAL, CHTH0, CHOICEPAL))
+    open(os.path.join(PROJ, 'game', 'fonycfg.inc'), 'w').write('FYFRAMES equ %d\nFYFRAMES16 equ %d\nFYP1 equ %d\nFYP2 equ %d\nFYS1 equ %d\nFYS2 equ %d\nFONYPAL equ %d\nFONYTEST equ %d\nBOOMP equ %d\nBOOMS equ %d\nNBOOMP equ %d\nNBOOMS equ %d\n' % (fv['n'], fv['n'], FYP1, FYP2, FYS1, FYS2, FONYPAL, 1 if '--fonytest' in sys.argv else 0, BOOMP, BOOMS, len(boomp) // 16384, len(booms) // 16384))
+    open(os.path.join(PROJ, 'game', 'fonytab.inc'), 'w').write(fv['tab'])
+    JNGP = EX0; JNGS = JNGP + len(jing8) // 16384
     assert EX0 + len(extra) <= (PLR_BANK if ascii16 else 4096 if lite else 16384), b
     subprocess.run([sys.executable, os.path.join(HERE, 'gen_slots.py')], check=True, capture_output=True)
     subprocess.run([sys.executable, os.path.join(HERE, 'gen_slots.py'), '--scc16'], check=True, capture_output=True)
+    subprocess.run([sys.executable, os.path.join(HERE, 'gen_fony.py')], check=True, capture_output=True)          # the players of the FONY film (game/fony*.inc)
+    subprocess.run([sys.executable, os.path.join(HERE, 'gen_fony16.py')], check=True, capture_output=True)
     if scc and tvn:
         subprocess.run([sys.executable, os.path.join(HERE, 'gen_tvplay16.py')], check=True, capture_output=True)
         subprocess.run([sys.executable, os.path.join(HERE, 'gen_tvplay16.py'), '--wait'], check=True, capture_output=True)       # (and the loop for a machine with a VDP wait state)
     clock = json.load(open(os.path.join(HERE, 'clock.json')))
     cscc = json.load(open(os.path.join(HERE, 'clock_scc.json')))
-    gen = 'WELCOME equ %d\nFONY equ %d\nHOWTO equ %d\nCREDITS equ %d\nSELFTEST equ %d\nTITLEV equ %d\nFONY5B equ %d\n' % (WELCOME, FONY, HOWTO, CREDITS, SELFTEST, TITLEV, FONY5B)
+    gen = 'WELCOME equ %d\nHOWTO equ %d\nCREDITS equ %d\nSELFTEST equ %d\nTITLEV equ %d\nJIGP1 equ %d\nJIGP2 equ %d\nJIGV equ %d\nXXXL1 equ %d\nXXXL2 equ %d\nXXXLPAL equ %d\n' % (WELCOME, HOWTO, CREDITS, SELFTEST, TITLEV, JIGP1, JIGP2, JIGV, XXXL1, XXXL2, XXXLPAL)
     bnf = os.path.join(HERE, 'build_number.txt')                                  # the build number of the specs screen: counted by the full 128 MB builds only (lite, quick and test builds show none)
     official = not (lite or quick or ascii16 or test0 or arg('--clipframes') or arg('--titleframes')) and os.path.basename(out) == 'PuzzleMania_128MB.rom'
     bn = int(open(bnf).read().strip()) + 1 if official else 0
     open(os.path.join(PROJ, 'game', 'buildno.inc'), 'w').write(('sp_build: db "%s",0' % ('/ %d' % bn if bn else '')) + chr(10))
-    open(os.path.join(PROJ, 'game', 'cfg.inc'), 'w').write('ASCII16 equ %d\nDIAG equ %d\nFREE equ %d\nTITLEVIDEO equ %d\nTVBANK equ %d\nTVFRAMES equ %d\nPLR_BANK equ %d\nTIETONLY equ 0\nBUILDID equ %d\nSCC equ %d\nTVBANK16 equ %d\nTVFRAMES16 equ %d\nMSX2PAL equ %d\nPBOFFS equ %d\nWELCOME2 equ %d\n' % (1 if ascii16 else 0, 1 if '--diag' in sys.argv else 0, 0 if '--locked' in sys.argv else 1, 1 if tvn else 0, tvbase, tvn, PLR_BANK, (0 if lite else 2 if arg('--clipframes') else 1), 1 if '--scc' in sys.argv else 0, TV16, tvn16 if TV16 else 0, 1 if msx2 else 0, PB2 - 1 if msx2 else 0, PB2 + STRIDE * len(USED) if msx2 else 0))
+    open(os.path.join(PROJ, 'game', 'cfg.inc'), 'w').write('ASCII16 equ %d\nDIAG equ %d\nFREE equ %d\nTITLEVIDEO equ %d\nTVBANK equ %d\nTVFRAMES equ %d\nPLR_BANK equ %d\nTIETONLY equ 0\nBUILDID equ %d\nSCC equ %d\nTVBANK16 equ %d\nTVFRAMES16 equ %d\nMSX2PAL equ %d\nPBOFFS equ %d\nWELCOME2 equ %d\nJNGP equ %d\nJNGS equ %d\nJNGTEST equ %d\n' % (1 if ascii16 else 0, 1 if '--diag' in sys.argv else 0, 0 if '--locked' in sys.argv else 1, 1 if tvn else 0, tvbase, tvn, PLR_BANK, (0 if lite else 2 if arg('--clipframes') else 1), 1 if '--scc' in sys.argv else 0, TV16, tvn16 if TV16 else 0, 1 if msx2 else 0, PB2 - 1 if msx2 else 0, PB2 + STRIDE * len(USED) if msx2 else 0, JNGP, JNGS, 1 if '--jngtest' in sys.argv else 0))
     open(os.path.join(PROJ, 'game', 'clk.inc'), 'w').write('MDELAY equ %d\nFI_PAL equ %d\nFI_NTSC equ %d\nFI_PAL_SCC equ %d\nFI_NTSC_SCC equ %d\n' % (clock['MDELAY'], clock['FI_PAL'], clock['FI_NTSC'], cscc['FI_PAL'], cscc['FI_NTSC']))
     open(os.path.join(PROJ, 'game', 'clk_scc.inc'), 'w').write('SCCPAD equ %d' % cscc['SCCPAD'] + chr(10) + 'QPAD equ %d' % cscc.get('QPAD', 18) + chr(10))
-    gen += 'mustab:\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 0,%d,%d,%d\n        dw %d,%d\n        db 0,%d,%d,%d\n' % (MENU_S, PM_S, kmenu, kmenub, kmenuc, PM_S, PM_E, kpuz, kpuzb, kpuzc, J8_S, J8_E, kmenu, kmenub, kmenuc, JW8_S, JW8_E, kmenu, kmenub, kmenuc)
+    gen += 'mustab:\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 1,%d,%d,%d\n' % (MENU_S, PM_S, kmenu, kmenub, kmenuc, PM_S, PM_E, kpuz, kpuzb, kpuzc)
     gen += 'vextra: db %d\n' % (1 if lite else 0)
     if scc:
-        gen += 'mustab_scc:\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 0,%d,%d,%d\n        dw %d,%d\n        db 0,%d,%d,%d\n' % (M16_S, M16_P, kmenu, kmenub, kmenuc, M16_P, M16_E, kpuz, kpuzb, kpuzc, J16_S, J16_E, kmenu, kmenub, kmenuc, JW16_S, JW16_E, kmenu, kmenub, kmenuc)
+        gen += 'mustab_scc:\n        dw %d,%d\n        db 1,%d,%d,%d\n        dw %d,%d\n        db 1,%d,%d,%d\n' % (M16_S, M16_P, kmenu, kmenub, kmenuc, M16_P, M16_E, kpuz, kpuzb, kpuzc)
     if msx2:
         gen += 'pal_tab:\n' + ''.join('        db ' + ','.join(str(x) for x in paltab[i:i + 16]) + '\n' for i in range(0, len(paltab), 16))
     gen += 'cliptab:\n' + ''.join('        dw %d,%d\n' % (base[k], n[k]) for k in ctab) + 'ptab:\n' + ''.join('        db %d,%d,%d,%d\n' % PTAB[N] for N in SIZES)
@@ -368,16 +446,20 @@ def main():
         plr_scc = open(os.path.join(gdir, 'plr_scc.bin'), 'rb').read()
         assert len(plr_scc) <= 16384
     open(os.path.join(gdir, 'plrsize.inc'), 'w').write('PLR_SIZE equ %d\nPLR_SIZE_SCC equ %d\n' % (len(plr), len(plr_scc)))
-    tmsp = paltab[:32] if msx2 else bytes(32)
-    open(os.path.join(gdir, 'fonyov.inc'), 'w').write(fony_intro.inc() + 'tms_pal:\n' + ''.join('        db ' + ','.join(str(x) for x in tmsp[i:i + 16]) + '\n' for i in range(0, 32, 16)))
     r = subprocess.run([SJASM, '--nologo', '--sym=pm.sym', 'pm.asm'], cwd=gdir, capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout + r.stderr)
         sys.exit('assembly failed')
-    r = subprocess.run([SJASM, '--nologo', 'ovl.asm'], cwd=gdir, capture_output=True, text=True)
+    r = subprocess.run([SJASM, '--nologo', '--sym=ovl.sym', 'ovl.asm'], cwd=gdir, capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout + r.stderr)
         sys.exit('assembly of the overlay failed')
+    r = subprocess.run([SJASM, '--nologo', '--sym=mem.sym', 'mem.asm'], cwd=gdir, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(r.stdout + r.stderr)
+        sys.exit('assembly of the memory bank failed')
+    membank = open(os.path.join(gdir, 'mem.bin'), 'rb').read()
+    assert len(membank) == 16384
     ovl = open(os.path.join(gdir, 'ovl.bin'), 'rb').read()
     assert len(ovl) == 16384 and len(banks) < PLR_BANK
     code = open(os.path.join(gdir, 'pm.bin'), 'rb').read()
@@ -390,7 +472,8 @@ def main():
             for k, c in enumerate(clips):
                 pat, col = load(c)
                 f.write(packed(pat, col))
-        f.write(bytes([0xFF]) * 16384 * (PLR_BANK - 1 - len(banks) - (sum(nb) if ascii16 else 0)))
+        f.write(membank)                # the memory game (MEMB = the first free bank)
+        f.write(bytes([0xFF]) * 16384 * (PLR_BANK - 2 - len(banks) - (sum(nb) if ascii16 else 0)))
         f.write((plr_scc + bytes([0xFF]) * (16384 - len(plr_scc))) if scc else bytes([0xFF]) * 16384)      # bank PLR_BANK - 1: the player block for the SCC
         f.write(plr + bytes([0xFF]) * (16384 - len(plr)))      # bank PLR_BANK: the player block for the RAM
         f.write(ovl)                    # bank VIDEO0 - 1 = OVLB

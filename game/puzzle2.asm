@@ -515,10 +515,8 @@ puzzle: call hidecursor
         ld (v_pdir),a
         ld (p_hint),a
         ld (v_pf),a
-        ld (p_fr),a
         ld hl,0
         ld (p_moves),hl
-        ld (p_secs),hl
         ld a,(p_bx)
         ld (v_pcx),a
         ld a,(p_by)
@@ -531,6 +529,10 @@ puzzle: call hidecursor
         call wait_release
         call keyedge
         call hint_update                ; (the loop only runs when something happens: the sprite cursor has to be there at the start)
+        xor a                           ; the time starts now, when the puzzle can be played (not while the picture is built up)
+        ld (p_fr),a
+        ld hl,0
+        ld (p_secs),hl
 .l:     call mvsync
         call selchk
         ld a,(att_on)
@@ -732,32 +734,11 @@ win:
         call showfull
         call job_flush                  ; the banner goes on the bottom row of the picture
         call win_banner
-        call music_stop                 ; the jingle: the FONY jingle of the disk version as a sample (track 3): over the SCC if there is one, else the PSG
-        ld a,3
-        ld c,0
-        call music_play
-        xor a                           ; (music_play always fades in: the jingle starts at full volume)
-        ld (mus_gs),a
-        ld (mus_gt),a
-        ld a,TABHI
-        ld (mus_tab),a
-        call scc_gain
-        xor a
-        ld (v_frame),a
-        ld hl,0
-        ld (v_tmp2),hl
-.j:     call mvsync                     ; first the jingle alone, on a quiet screen: no screen work, so the player loses no samples (idle frames)
-        ld hl,v_frame
-        inc (hl)
-        ld a,(mus_done)
-        or a
-        jr nz,.jd
-        ld a,(v_frame)
-        cp 60
-        jr c,.j
-        call getfire                    ; (SPACE skips it, but not in the first second)
-        jr z,.j
-        jr .end
+        call music_stop                 ; the jingle: the FONY jingle of the disk version as a sample, a plain loop on a quiet screen (sndplay.asm): over the SCC if there is one, else the PSG
+        call wait_release               ; (the last move may have been SPACE)
+        ld c,1                          ; (SPACE skips it, but not in the first second)
+        call ovl_snd
+        jr c,.end
 .jd:    call music_stop
         call conf_init                  ; then the confetti and the flashing, without sound: the length of the old jingle (46 rows of 5 / 6 frames)
         xor a

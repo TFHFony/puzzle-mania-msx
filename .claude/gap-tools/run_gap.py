@@ -1,4 +1,4 @@
-"""usage: run_gap.py ROM MODE SIZE CTL [HOLD]  -> runs gap_log.tcl in openMSX (own process, killed after 150 s at most) and prints the analysis (analyse.py)"""
+"""usage: run_gap.py ROM MODE SIZE CTL [hold|PROF|HINT|EXT=scc|TAG=x|KC=n|KB=n|PCS=0x..,..]  -> runs gap_log.tcl in openMSX (own process, killed after 70 s at most; env MACHINE overrides the machine) and prints the analysis (analyse.py)"""
 import subprocess, os, sys, time
 P = r'F:\MSX Projects\PMdev26'
 rom, mode, size, ctl = sys.argv[1:5]
@@ -17,9 +17,9 @@ for a in sys.argv[5:]:
     if a.startswith('TAG='): out = out.replace('.txt', '_' + a[4:] + '.txt'); env['OUT'] = out.replace(chr(92), '/')
 if os.path.exists(out): os.remove(out)
 ext = ['-ext', 'scc'] if 'EXT=scc' in sys.argv else []
-p = subprocess.Popen([r'C:\Program Files\openMSX\openmsx.exe', '-machine', 'Philips_NMS_8250' if ext else 'Philips_VG_8020', '-cart', rom, '-romtype', 'NEO-16'] + ext + ['-script', os.path.join(P, '.claude', 'gap-tools', 'gap_log.tcl')], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+p = subprocess.Popen([r'C:\Program Files\openMSX\openmsx.exe', '-machine', 'Philips_NMS_8250' if ext else os.environ.get('MACHINE', 'Philips_VG_8020'), '-cart', rom, '-romtype', 'NEO-16'] + ext + ['-script', os.path.join(P, '.claude', 'gap-tools', 'gap_log.tcl')], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 t0 = time.time()
 while time.time() - t0 < 70 and p.poll() is None: time.sleep(2)
-if p.poll() is None: p.kill(); print('killed after 150 s')
+if p.poll() is None: p.kill(); print('killed after 70 s')
 print(open(os.path.join(P, 'work', 'shots', 'log.txt')).read())
 print(subprocess.run([sys.executable, os.path.join(P, '.claude', 'gap-tools', 'analyse.py'), out], capture_output=True, text=True).stdout)

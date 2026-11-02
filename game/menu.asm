@@ -152,6 +152,12 @@ menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         call wait_release
         call att_init
         call menu_cursor                ; (the loop only runs when something happens: the cursor has to be there at the start)
+        ld a,(att_pd)                   ; started from the choice screen: the attract mode begins at once
+        or a
+        jr z,.l
+        xor a
+        ld (att_pd),a
+        jr .at
 .l:     call mvsync
         call selchk
         call anykey                     ; a key in the second half of the song: the song goes round again; no key: at its end the attract mode "selects" a photo
@@ -161,7 +167,7 @@ menu_loop:                              ; NC = photo chosen (v_photo), C = ESC
         jr .bz
 .ni:    call att_check
         jr nc,.bz
-        call att_mute                   ; (the song is at its end: it runs on muted, the attract mode picks a photo and a size in silence)
+.at:    call att_mute                   ; (the song is at its end: it runs on muted, the attract mode picks a photo and a size in silence)
         call hidecursor
         call att_pick
         call att_show                   ; the cursor goes to the photo
