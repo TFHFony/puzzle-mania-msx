@@ -115,14 +115,23 @@ domove: ld c,a
 .bad:   scf
         ret
 
-posidx: ld a,(d_y)                      ; A = d_y * N + d_x
-        ld b,a
-        ld a,(v_size)
+posidx: ld a,(v_size)                   ; A = d_y * N + d_x (a table gives d_y * N: the multiplication loop took a quarter of the frame of a move)
         ld c,a
-        call mulbc
+        add a,a
+        add a,c
+        add a,a                         ; 6 N
+        sub 18                          ; 6 (N - 3): the row of the table
+        ld c,a
+        ld a,(d_y)
+        add a,c
+        ld c,a
+        ld b,0
+        ld hl,rowmul
+        add hl,bc
         ld a,(d_x)
-        add a,l
+        add a,(hl)
         ret
+rowmul: db 0,3,6,9,12,15, 0,4,8,12,16,20, 0,5,10,15,20,25, 0,6,12,18,24,30
 
 shuffle:                                ; random walk of the blank from the solved position: always solvable
         ld hl,ATT_BUF                   ; (the attract mode records the moves)

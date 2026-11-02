@@ -346,12 +346,14 @@ for kk in ('k7', 'k3', 'k4', 'k5'):
 task('busy level 2 = a key was pressed (a cursor key only with the arrow control: the sprite cursor is cheap)', [
     'ld a,(mus_pr)', 'neg', 'sbc a,a', 'ld c,a', 'ld a,(mus_p8)', 'and 0xF0', 'neg', 'sbc a,a', 'ld b,a', 'ld a,(v_ctl)', 'or a', 'sub 1', 'sbc a,a', 'and b', 'or c', 'and 2',
     'ld (mus_busy),a'])
-task('a cursor key is down', ['ld a,(k8)', 'or 0x0F', 'inc a', 'neg', 'sbc a,a', 'ld (mus_kd),a'])
-task('busy: a held cursor key (level 1), about to repeat (level 2 with the arrow control only)', [
-    'ld a,(v_ctl)', 'or a', 'sub 1', 'sbc a,a', 'ld e,a', 'ld a,(mus_kd)', 'and e', 'ld b,a', 'and 1', 'ld d,a',
-    'ld a,(v_rep)', 'dec a', 'sub 1', 'sbc a,a', 'and b', 'and 2', 'or d', 'ld (mus_t),a'])
+task('a cursor key is down, it repeats in this frame (v_rep = 1), it went down in this frame', ['ld a,(k8)', 'or 0x0F', 'inc a', 'neg', 'sbc a,a', 'ld (mus_kd),a',
+    'ld b,a', 'ld a,(v_rep)', 'dec a', 'sub 1', 'sbc a,a', 'and b', 'ld (mus_rd),a',
+    'ld a,(mus_p8)', 'and 0xF0', 'neg', 'sbc a,a', 'ld (mus_cp),a'])
+task('busy: about to repeat (level 2 with the arrow control only; a held key without work is idle: no level 1 any more)', [
+    'ld a,(v_ctl)', 'or a', 'sub 1', 'sbc a,a', 'ld e,a', 'ld a,(mus_rd)', 'ld b,a', 'and e', 'and 2', 'ld d,a',
+    'ld a,e', 'cpl', 'and b', 'and 4', 'or d', 'ld (mus_t),a'])
 task('busy: a cursor key is down with the sprite cursor (level 4: the cursor moves, that is cheap)', [
-    'ld a,(v_ctl)', 'or a', 'sub 1', 'sbc a,a', 'cpl', 'ld b,a', 'ld a,(mus_kd)', 'and b', 'and 4', 'ld b,a', 'ld a,(mus_t)', 'or b', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a'])
+    'ld a,(v_ctl)', 'or a', 'sub 1', 'sbc a,a', 'cpl', 'ld b,a', 'ld a,(mus_cp)', 'and b', 'and 4', 'ld b,a', 'ld a,(mus_t)', 'or b', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a'])
 task('busy: the hint (level 1)', ['ld a,(p_hint)', 'neg', 'sbc a,a', 'and 1', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a'])
 task('busy: a key was released (level 1)', ['ld a,(mus_ch)', 'neg', 'sbc a,a', 'and 1', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a'])
 task('colour of the cursor sprites (the cursor flashes every 16 frames; the hint / the cursor of control 1 sets v_ccol): the same as setcursor', [
@@ -360,7 +362,7 @@ task('colour of the cursor sprites (the cursor flashes every 16 frames; the hint
 for n in range(4):
     task('colour of cursor sprite %d into the sprite attribute table (every frame: no change detection, the cursor never makes a frame busy)' % n, [
         'SETADDR 0x%04X' % (0x1B03 + 4 * n), 'ld a,(mus_ce)', 'out (0x98),a'])
-task('busy: the game announces work (it queues screen work in this frame): action frame', ['ld a,(j_qn)', 'neg', 'sbc a,a', 'and 2', 'ld b,a', 'ld a,(mus_hint)', 'or b', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a', 'xor a', 'ld (mus_hint),a'])
+task('busy: the game announces work (it queues screen work in this frame): action frame', ['ld a,(j_qn)', 'neg', 'sbc a,a', 'and 0', 'ld b,a', 'ld a,(mus_hint)', 'or b', 'ld b,a', 'ld a,(mus_busy)', 'or b', 'ld (mus_busy),a', 'xor a', 'ld (mus_hint),a'])
 task('fade', ['call VEC_FADE'])
 task('this frame: samples to play, by busy level (the plan was made during the previous frame)', [
     'ld a,(mus_busy)', 'ld e,a', 'ld d,0', 'ld ix,mus_np', 'add ix,de', 'ld a,(ix+0)', 'ld (mus_n),a'])

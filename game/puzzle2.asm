@@ -546,7 +546,21 @@ puzzle: call hidecursor
 .nat:   ld a,(mus_busy)                 ; nothing to do (no key change, no cursor flash, no hint): counters and timer run in the slots
         or a
         jr z,.l
-        call getesc
+        ld a,(mus_on)                   ; fast path: only an arrow key (press, auto repeat, release) with the arrow control, no other key, no hint, no N / H held:
+        or a                            ; the keys ESC, N, H, L, C, T and the hint need no look, the frame goes straight to the move (half of the work of a key frame)
+        jr z,.full
+        ld hl,mus_pr
+        ld a,(hl)
+        ld hl,p_hint
+        or (hl)
+        ld hl,p_nshow
+        or (hl)
+        ld hl,p_hshow
+        or (hl)
+        ld hl,v_ctl
+        or (hl)
+        jp z,.k0
+.full:  call getesc
         jr nz,.noesc
 .esc:   call job_flush
         call hidecursor
@@ -639,7 +653,7 @@ puzzle: call hidecursor
         ld a,(v_ctl)
         or a
         jr nz,.mode1
-        call getkey                     ; control 0: the arrow key slides the tile next to the blank
+.k0:    call getkey                     ; control 0: the arrow key slides the tile next to the blank
         or a
         jp z,.l
         cp 1                            ; key direction -> blank direction (opposite of the tile slide)

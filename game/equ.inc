@@ -160,6 +160,8 @@ v_xtra   equ 0xC179     ; the 8 fps ROM: one extra blanking per frame (for the o
 mus_p8   equ 0xC17A     ; keys of row 8 that were pressed this frame (cursor keys in the high nibble)
 mus_km   equ 0xC17B     ; skipped samples while the sprite cursor moves
 mus_t    equ 0xC17C     ; temporary of the slots
+mus_rd   equ 0xC17D     ; FFh: a held cursor key repeats in this frame (v_rep = 1)
+mus_cp   equ 0xC17E     ; FFh: a cursor key went down in this frame
 
 ; ---- the player (volume tables + mvsync + mnext) runs from RAM, so that page 1 can show another ROM bank to the job engine while it plays
 PLAYER_RAM equ 0xC400   ; the block is copied here at the start (ROM bank PLR_BANK)
@@ -216,7 +218,7 @@ ATT_BUF  equ 0xC310     ; the moves of the shuffle (one byte each, up to 192)
 CONF     equ 0xC310     ; confetti: y, x, speed, drift, colour (5 bytes each)
 NCONF    equ 16
 ATT_SHOW  equ 90      ; frames that the attract mode shows its choice (the photo, then the size)
-ATT_DELAY equ 48      ; frames between two moves of the attract mode (a move itself takes about 1): 2 moves per second at 50 Hz
+ATT_DELAY equ 48      ; frames between two moves of the attract mode: 1 move per second at 50 Hz (the drawing of a move runs in the player while the music goes on)
 ATT_DELAY60 equ 58
 p_bank   equ 0xC1E0     ; word: ROM bank of the puzzle picture (size, line style)
 j_nl     equ 0xC1E2     ; - bytes per row of a tile
