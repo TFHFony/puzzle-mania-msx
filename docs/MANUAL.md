@@ -23,8 +23,8 @@ You play with the keyboard or with a joystick in port 1.
 
 | | |
 |---|---|
-| **Minimum** | Any **MSX1** with at least 16 KB RAM is enough. 50 Hz and 60 Hz machines both work. The music plays on the standard sound chip (PSG). |
-| **NEO16 Mapper** | This ROM comes in a 16MByte version (short clips, no SCC) and a full 128MByte version with full clips and SCC Support. |
+| **Minimum** | Any **MSX1** with at least 16 KB RAM will do. 50 Hz and 60 Hz machines both work. The music plays on the standard sound chip (PSG). |
+| **NEO16 Mapper** | This game comes as a 16 MByte ROM (short clips, no SCC) and as a full 128 MByte ROM (full-length clips, with SCC support). |
 
 ## 2.1 Optional
 | | |
@@ -35,7 +35,7 @@ You play with the keyboard or with a joystick in port 1.
 ## 2.2 Emulators
 | | |
 |---|---|
-| **openMSX v22** | openMSX supports 128MByte NEO16 cartridges. Select MSX2 & an SCC for XXXL enjoyment. |
+| **openMSX v22** | openMSX supports 128 MByte NEO16 cartridges. Select an MSX2 and an SCC for XXXL enjoyment. |
 | **WebMSX** | Use the version on File-Hunter.com or just go to https://www.file-hunter.com/MSXdev/?id=puzzlemaniaxxxl |
 
 The game finds out by itself what your machine can do. Nothing needs to be set.
@@ -105,7 +105,7 @@ Twenty cards, ten pairs. Move the yellow corners over a card and press **SPACE**
 |---|---|
 | ![Memory board](images/g_memory.png) | ![A card turned](images/g_memory_turn.png) |
 
-When the last pair is found the board you'll get your reward, which matches the last pair you've solved. Press **SPACE** to see the video of the last pair, and **SPACE** again to go back to the choice screen.
+When the last pair is found, you get your reward: the clip of the last pair you solved. Press **SPACE** to go back to the choice screen.
 
 ![Memory solved](images/g_memory_solved.png)
 
@@ -139,12 +139,12 @@ Leave the game alone for a while and it plays by itself, alternating between the
 
 ![Credits](images/g_credits.png)
 
-## 9. Some other stuff:
+## 9. Some other stuff
 
 | | |
 |---|---|
-| Pico | Are you using an MSX Pico or Pico+? Make sure to set the Speed Improvement to RISKY |
-| "S" | Want to change some settings? Keep "S" pressed while the game boots |
+| Pico | Are you using an MSX Pico or Pico+? Make sure to set the Speed Improvement to RISKY. |
+| "S" | Want to change some settings? Keep "S" pressed while the game boots. |
 | (.)(.) | Send them to boobies@file-hunter.com |
 
 ## 10. Freeware licence
