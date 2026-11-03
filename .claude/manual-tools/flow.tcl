@@ -25,6 +25,14 @@ set A {
  {key 8 1} {wait 7} {shot puzzle}
  {key 3 32} {wait 1} {shot solution}
 }
+set C {
+ {wait 2} {key 8 1} {wait 4} {key 8 1} {wait 3} {key 3 1} {wait 1} {shot csize}
+ {key 8 1} {wait 7} {shot c0}
+ {key 8 128} {wait 0.7} {shot c1}
+ {key 8 1} {wait 1.0} {shot c2}
+ {key 8 32} {wait 0.7} {shot c3}
+ {key 8 1} {wait 1.0} {shot c4}
+}
 set B {
  {wait 2} {key 8 128} {wait 0.5} {shot choice_memory}
  {key 8 1} {wait 6} {shot board}

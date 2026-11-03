@@ -10,10 +10,10 @@
 
 ## 1. The game
 
-Puzzle Mania has two games, both with the same nine photos:
+Puzzle Mania has two games, both with the same twelve photos:
 
 - **Sliding puzzle** — the photo is cut into pieces and shuffled. Slide the pieces back into place. You choose the size: 3×3 (easy) up to 6×6 (hard).
-- **Memory** — twenty cards lie face down. Turn two at a time and find the ten pairs of photos.
+- **Memory** — twenty cards lie face down. Turn two at a time and find the ten pairs of photos (ten of the twelve photos, a different selection every time).
 
 Finish a puzzle and you get a jingle, falling confetti and a video of the photo.
 
@@ -68,6 +68,21 @@ At the bottom of this screen and the photo menu: **H** shows the help, **ESC** s
 | A shuffled 3×3 puzzle | Solved: your moves and time are shown |
 
 When you finish you hear the jingle, confetti falls over the picture and the video starts. Press **SPACE** to go back to the menu.
+
+**Playing with the cursor.** Press **C** (here or during the game) to switch from ARROWS to CURSOR; the size menu then shows `C MOVE:CURSOR`.
+
+![Size menu with CURSOR control](images/g_size_cursor.png)
+
+Four yellow corners show which square the cursor is on; at the start they sit on the gap. Move them with the cursor keys to the piece you want to move, and press **SPACE**: the piece slides into the gap. Only a piece next to the gap can move. After the move the corners are on the new gap.
+
+| | |
+|---|---|
+| ![Cursor right of the gap](images/g_cur1.png) | ![SPACE: the piece slides into the gap](images/g_cur2.png) |
+| **1.** Move the corners onto the piece next to the gap (here: right) | **2.** Press **SPACE**: the piece slides into the gap |
+| ![Cursor on the piece above](images/g_cur3.png) | ![SPACE again](images/g_cur4.png) |
+| **3.** The gap is now on the right: move the corners up to the piece above it | **4.** Press **SPACE** again: it slides down |
+
+With ARROWS you skip the cursor: an arrow key slides the piece next to the gap in that direction. Press **C** again to switch back.
 
 **Need help?** Hold **H** to look at the finished photo. Hold **N** to see the number of every piece, plus your moves and time. Press **T** to see which piece belongs in the gap.
 

@@ -2,7 +2,7 @@
 
 ![Puzzle Mania](docs/images/02b_title_video.png)
 
-Two puzzle games for the plain **MSX1** (16 KB RAM) on a **NEO16** cartridge: a **sliding puzzle** (nine photos, 3×3 up to 6×6) and **memory** (twenty cards, ten pairs). Finish a puzzle for a jingle, confetti and a video.
+Two puzzle games for the plain **MSX1** (16 KB RAM) on a **NEO16** cartridge: a **sliding puzzle** (twelve photos, 3×3 up to 6×6) and **memory** (twenty cards, ten pairs). Finish a puzzle for a jingle, confetti and a video.
 An **MSX2 or later** gives every photo better colours; an **SCC** cartridge gives higher quality music. The game plays itself when left alone (attract mode).
 Keyboard or joystick (port 1). Freeware. Contains nudity (18+).
 
