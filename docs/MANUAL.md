@@ -137,6 +137,8 @@ Leave the game alone for a while and it plays by itself, alternating between the
 | GFX | The File-Hunter & Tittygram |
 | Music | The File-Hunter & Solmi AI |
 
+![Credits](images/g_credits.png)
+
 ## 9. Some other stuff:
 
 | | |
@@ -144,8 +146,6 @@ Leave the game alone for a while and it plays by itself, alternating between the
 | Pico | Are you using an MSX Pico or Pico+? Make sure to set the Speed Improvement to RISKY |
 | "S" | Want to change some settings? Keep "S" pressed while the game boots |
 | (.)(.) | Send them to boobies@file-hunter.com |
-
-![Credits](images/g_credits.png)
 
 ## 10. Freeware licence
 
