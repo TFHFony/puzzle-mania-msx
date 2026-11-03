@@ -238,7 +238,8 @@ def build_jigsaw(choices, tv_last, last_graded, msx2, fresh):
     png = os.path.join(PROJ, 'work', 'stills', 'clip%02d_%d_src.png' % (WELCOME_PHOTO, choices[WELCOME_PHOTO]))
     mt = lambda f: os.path.getmtime(f)
     key = (choices, 'v1', mt(os.path.join(HERE, 'jigsaw.py')), mt(png), PO.LOOK, mt(PO.PJSON) if msx2 else 0, msx2, None if tv_last is None else (bytes(tv_last), last_graded.tobytes()))
-    pk = os.path.join(PROJ, 'work', 'jigsaw.pkl')
+    import hashlib
+    pk = os.path.join(PROJ, 'work', 'jigsaw_%s.pkl' % hashlib.md5(repr(key).encode()).hexdigest()[:12])      # one file per variant: a test build does not overwrite the cache of the official build
     if os.path.exists(pk) and not fresh:
         k, res = pickle.load(open(pk, 'rb'))
         if k == key:

@@ -87,6 +87,7 @@ m_att   equ 0xC07E      ; the memory game is played by the attract mode (a bot: 
 m_tgt   equ 0xC07F      ; the bot: the place of the card it moves to
 m_ph    equ 0xC080      ; the bot: 0 chooses the first card, 1 moves to it, 2 chooses the second card, 3 moves to it
 m_dl    equ 0xC081      ; the bot: frames to wait
+m_tk    equ 0xC08C      ; the attract mode of the memory game: a frame counter (the bot runs every 8th frame)
 m_jn    equ 0xC082      ; the cards that the memory bank wants drawn by the jobs of the player (memory.asm mem_jobs): the number
 m_jq    equ 0xC083      ; and the entries: destination (pattern address), source (in the memory bank), 4 bytes each, at most 2
 snd_sel equ 0xC07B      ; 1 = the dreun of the film is played (sndplay.asm)
@@ -254,8 +255,8 @@ ATT_BUF  equ 0xC310     ; the moves of the shuffle (one byte each, up to 192)
 CONF     equ 0xC310     ; confetti: y, x, speed, drift, colour (5 bytes each)
 NCONF    equ 16
 ATT_SHOW  equ 90      ; frames that the attract mode shows its choice (the photo, then the size)
-ATT_DELAY equ 48      ; frames between two moves of the attract mode: 1 move per second at 50 Hz (the drawing of a move runs in the player while the music goes on)
-ATT_DELAY60 equ 58
+ATT_DELAY equ 96      ; frames between two moves of the attract mode: 1 move per two seconds at 50 Hz (the drawing of a move runs in the player while the music goes on)
+ATT_DELAY60 equ 116
 p_bank   equ 0xC1E0     ; word: ROM bank of the puzzle picture (size, line style)
 j_nl     equ 0xC1E2     ; - bytes per row of a tile
 j_zero   equ 0xC1E3     ; always 0

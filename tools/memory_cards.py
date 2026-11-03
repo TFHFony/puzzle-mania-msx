@@ -72,17 +72,35 @@ BIG_BLUE = (4, 5)                                # the blue of the big card: MSX
 
 
 def big_card(blue):
-    """the card of the memory game on the choice screen (104 x 80 pixels = 13 x 10 characters, 2080 bytes): white frame, white question mark, blue field; two colours"""
+    """the card of the memory game on the choice screen (104 x 80 pixels = 13 x 10 characters, 2080 bytes), as big as the photo next to it (100 x 76 with a black margin of two pixels):
+    a blue card with a white frame and a white question mark; the characters at the edge hold black and blue only, the others blue and white"""
     import build_game as B
-    im = Image.new('L', (BIGW, BIGH), 0)                                 # (a black border of two pixels around the card, like the thumbnails of the menu)
+    im = Image.new('L', (BIGW, BIGH), 0)
     d = ImageDraw.Draw(im)
-    d.rectangle([2, 2, BIGW - 3, BIGH - 3], outline=255, width=3)
-    f = ImageFont.truetype('C:/Windows/Fonts/arialbd.ttf', 66)
+    d.rectangle([8, 8, BIGW - 9, BIGH - 9], outline=255, width=3)
+    f = ImageFont.truetype('C:/Windows/Fonts/arialbd.ttf', 58)
     x0, y0, x1, y1 = d.textbbox((0, 0), '?', font=f)
     d.text(((BIGW - (x1 - x0)) // 2 - x0, (BIGH - (y1 - y0)) // 2 - y0), '?', font=f, fill=255)
-    m = np.asarray(im) >= 128
-    pat = (m.reshape(BIGH, BIGW // 8, 8).astype(np.uint8) << (7 - np.arange(8, dtype=np.uint8))).sum(-1).astype(np.uint8)
-    col = np.full(pat.shape, (WHITE << 4) | blue, np.uint8)
+    white = np.asarray(im) >= 128
+    card = np.zeros((BIGH, BIGW), bool)
+    card[2:BIGH - 2, 2:BIGW - 2] = True                      # the blue card (100 x 76)
+    pat = np.zeros((BIGH, BIGW // 8), np.uint8)
+    col = np.zeros((BIGH, BIGW // 8), np.uint8)
+    for y in range(BIGH):
+        for cx in range(BIGW // 8):
+            sl = slice(cx * 8, cx * 8 + 8)
+            w, c = white[y, sl] & card[y, sl], card[y, sl]
+            if w.any():                                      # white on blue (a white pixel can sit in a character at the edge only inside the card)
+                assert c.all(), (y, cx)
+                fg, bg, bits = WHITE, blue, w
+            elif c.all():
+                fg, bg, bits = blue, blue, np.zeros(8, bool)
+            elif c.any():                                    # the edge: blue on black
+                fg, bg, bits = blue, 1, c
+            else:
+                fg, bg, bits = 1, 1, np.zeros(8, bool)
+            pat[y, cx] = int(sum(1 << (7 - i) for i in range(8) if bits[i]))
+            col[y, cx] = (fg << 4) | bg
     return B.chars(pat) + B.chars(col)
 
 

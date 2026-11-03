@@ -530,11 +530,12 @@ mg_frame:
         ld hl,m_st
         add hl,de
         ld a,(hl)
+        and 0x7F                        ; (bit 7: the card has been seen)
         or a
         jr z,.turn
         xor a                           ; (a card that is turned already)
         ret
-.turn:  ld (hl),1
+.turn:  ld (hl),0x81                     ; face up, seen
         ld hl,m_pic
         add hl,de
         ld d,(hl)                       ; D = the photo, E = the place
@@ -604,11 +605,37 @@ turnback:                               ; A = place: face down again
         ld d,0
         ld hl,m_st
         add hl,de
-        ld (hl),0
+        ld (hl),0x80                    ; face down again, but it has been seen
         ld d,12
         jp qcard
 
-; ---- the attract mode: a bot plays the memory game (it moves the cursor and presses SPACE like a player; three times of four it turns the right partner, else any card)
+partner:ld c,a                          ; B = a photo, A = a place to leave out -> NC and A = the other place with that photo that is face down and has been seen, or carry
+        ld e,0
+.l:     ld a,e
+        cp c
+        jr z,.n
+        ld d,0
+        ld hl,m_st
+        add hl,de
+        ld a,(hl)
+        cp 0x80
+        jr nz,.n
+        ld hl,m_pic
+        add hl,de
+        ld a,(hl)
+        cp b
+        jr nz,.n
+        ld a,e
+        or a
+        ret
+.n:     inc e
+        ld a,e
+        cp 20
+        jr nz,.l
+        scf
+        ret
+
+; ---- the attract mode: a bot plays the memory game (it moves the cursor and presses SPACE like a player and remembers what it has seen: a second card only when it has seen its partner)
 bot:    ld a,(k8)                       ; a key of a real player stops it
         cpl
         and 0xF1
@@ -633,65 +660,50 @@ bot:    ld a,(k8)                       ; a key of a real player stops it
         ld a,(m_ph)                     ; 0: the first card, 2: the second card
         or a
         jr nz,.second
-.first: ld c,20
-        ld d,31
-        call pick
-        ld e,a
-        ld d,0
+.first: ld e,0                          ; a pair that has been seen (two cards face down, turned before, the same photo): turn one of them
+.fp:    ld d,0
         ld hl,m_st
         add hl,de
         ld a,(hl)
-        or a
-        jr nz,.first
+        cp 0x80                         ; face down and seen
+        jr nz,.fpn
+        ld hl,m_pic
+        add hl,de
+        ld b,(hl)
+        ld a,e
+        push de
+        call partner
+        pop de
+        jr c,.fpn
         ld a,e
         ld (m_tgt),a
         jr .chosen
-.second:call rnd
-        ld a,l
-        and 3
-        jr z,.anyc
-        ld a,(m_f1)
-        ld e,a
-        ld d,0
-        ld hl,m_pic
-        add hl,de
-        ld b,(hl)                       ; the photo of the first card
-        ld e,0
-.f:     ld a,(m_f1)
-        cp e
-        jr z,.fn
-        ld d,0
-        ld hl,m_st
-        add hl,de
-        ld a,(hl)
-        or a
-        jr nz,.fn
-        ld hl,m_pic
-        add hl,de
-        ld a,(hl)
-        cp b
-        jr nz,.fn
-        ld a,e
-        ld (m_tgt),a
-        jr .chosen
-.fn:    inc e
+.fpn:   inc e
         ld a,e
         cp 20
-        jr nz,.f
-.anyc:  ld c,20
+        jr nz,.fp
+.unseen:ld c,20                         ; else a card that nobody has seen
         ld d,31
         call pick
         ld e,a
-        ld a,(m_f1)
-        cp e
-        jr z,.anyc
         ld d,0
         ld hl,m_st
         add hl,de
         ld a,(hl)
         or a
-        jr nz,.anyc
+        jr nz,.unseen
         ld a,e
+        ld (m_tgt),a
+        jr .chosen
+.second:ld a,(m_f1)                     ; has the partner of the first card been seen? then that one, else a card that nobody has seen
+        ld e,a
+        ld d,0
+        ld hl,m_pic
+        add hl,de
+        ld b,(hl)
+        ld a,e
+        call partner
+        jr c,.unseen
         ld (m_tgt),a
 .chosen:ld hl,m_ph
         inc (hl)                        ; 1 / 3: move to it
@@ -723,12 +735,12 @@ bot:    ld a,(k8)                       ; a key of a real player stops it
         inc a
         and 3
         ld (m_ph),a
-        ld a,30                         ; (a moment before the next card)
+        ld a,8                          ; (a moment before the next card: 8 calls of the bot = 64 frames)
         ld (m_dl),a
         ld a,1
         ret
 .k:     ld b,a
-        ld a,8                          ; the next step
+        ld a,2                          ; the next step (2 calls of the bot = 16 frames)
         ld (m_dl),a
         ld a,b
         ret

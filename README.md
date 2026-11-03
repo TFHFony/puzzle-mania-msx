@@ -2,10 +2,8 @@
 
 ![Puzzle Mania](docs/images/02b_title_video.png)
 
-A sliding puzzle with a video reward for the plain **MSX1** (16 KB RAM, TMS9918A, PSG) on a **NEO16** cartridge.
-Choose one of 9 photos, choose 3×3 … 6×6, slide the pieces back, get a jingle, confetti and the video. The music is a 3-channel PSG sample that keeps playing while you play (the 128 MB version plays it on an SCC at 16 kHz if there is one).
-Leave the menu alone and the game plays itself: attract mode (solves a photo, jingle, clip, title, menu, and again).
-On an MSX2 or later (128 MB version) every photo has a palette of its own; hold **S** at power-on for the specs screen (video chip, wait state test, SCC, 50/60 Hz, build number).
+Two puzzle games for the plain **MSX1** (16 KB RAM) on a **NEO16** cartridge: a **sliding puzzle** (nine photos, 3×3 up to 6×6) and **memory** (twenty cards, ten pairs). Finish a puzzle for a jingle, confetti and a video.
+An **MSX2 or later** gives every photo better colours; an **SCC** cartridge gives higher quality music. The game plays itself when left alone (attract mode).
 Keyboard or joystick (port 1). Freeware. Contains nudity (18+).
 
 **Manual:** [docs/MANUAL.md](docs/MANUAL.md) (edit it on GitHub, the screenshots are in `docs/images`).

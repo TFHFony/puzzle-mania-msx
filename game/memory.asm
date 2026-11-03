@@ -26,6 +26,8 @@ mode_loop:                              ; the choice after the title: A = 0 slid
         call draw_choice
 .go:    call wait_release
         call att_init
+        call mvsync                     ; the cursor is there at once (not only after a key)
+        call setcursor
 .l:     call mvsync
         call anykey
         jr z,.ni
@@ -122,13 +124,19 @@ memory:                                 ; the memory game; when it is won: the s
         ld c,1
         call music_play
 .l:     call mvsync
-        ld a,(mus_busy)                 ; only a frame with something to do (a key, the cursor, a wait, the bot) calls the memory bank: the idle gap of the music is only 2 samples
+        ld hl,m_tk
+        inc (hl)
+        ld a,(hl)
+        and 7
+        jr nz,.nt
+        ld a,(m_att)                    ; the attract mode: the bot only runs every 8th frame (a call of the memory bank costs samples: the music stays as clean as the idle puzzle)
+        or a
+        jr nz,.go
+.nt:    ld a,(mus_busy)                 ; only a frame with something to do (a key, the cursor, a wait) calls the memory bank: the idle gap of the music is only 2 samples
         ld hl,m_wait
         or (hl)
-        ld hl,m_att
-        or (hl)
         jr z,.l
-        call ovl_mg_frame               ; A = 0 on, 1 won, 2 ESC
+.go:    call ovl_mg_frame               ; A = 0 on, 1 won, 2 ESC
         push af
         call setcursor
         call mem_jobs
@@ -140,17 +148,14 @@ memory:                                 ; the memory game; when it is won: the s
         pop af
         cp 2
         jr z,.out
-        call music_stop                 ; won: the photo of the last pair, the jingle, the confetti, the video
-        call job_reset
-        call clrscr
-        ld a,(m_last)
+        ld a,(m_last)                   ; won: the board stays (all the cards are up), the jingle, the confetti over it, then the video of the last pair
         ld (v_photo),a
-        ld hl,(m_moves)
-        ld (p_moves),hl
-        add a,PAL_PHOTO0
-        call need_pal
-        call win
-        or a
+        call job_flush                  ; (the last card is drawn)
+        ld a,(m_att)
+        ld (att_on),a                   ; the attract mode: the clip plays once and it goes on
+        call win_go
+        xor a
+        ld (att_on),a
         ret
 .out:   call music_stop
         ld a,PAL_TMS

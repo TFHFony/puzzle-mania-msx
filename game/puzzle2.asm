@@ -734,6 +734,7 @@ win:
         call showfull
         call job_flush                  ; the banner goes on the bottom row of the picture
         call win_banner
+win_go:                                 ; (the memory game comes in here: its board stays on the screen)
         call music_stop                 ; the jingle: the FONY jingle of the disk version as a sample, a plain loop on a quiet screen (sndplay.asm): over the SCC if there is one, else the PSG
         call wait_release               ; (the last move may have been SPACE)
         ld c,1                          ; (SPACE skips it, but not in the first second)

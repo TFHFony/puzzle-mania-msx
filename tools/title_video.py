@@ -178,6 +178,29 @@ def _enc(args):
 
 
 def encode_parallel(frames, fps=None):
+    """the frames coded for SCREEN 2; cached (work/tvenc_<hash>.pkl: the hash covers the pictures, the settings and the coding code), the cache also restores LAST_GRADED"""
+    import hashlib, pickle, inspect
+    sys.path.insert(0, r'F:/MSX Projects/Dev27/msx1-video-player/tools')
+    import build_game as B, screen4_sim as S, stills
+    h = hashlib.md5()
+    for f in frames:
+        h.update(np.ascontiguousarray(f).tobytes())
+    h.update(repr((fps, FADE_OUT, SAT, GAMMA, sorted(WARM), FPS16)).encode())
+    h.update(inspect.getsource(B.coded).encode() + inspect.getsource(B.chars).encode() + inspect.getsource(_enc).encode() + inspect.getsource(grade).encode() + inspect.getsource(letter_mask).encode())
+    for mod in (S, stills):
+        h.update(repr(os.path.getmtime(mod.__file__)).encode())
+    pk = os.path.join(PROJ, 'work', 'tvenc_%s.pkl' % h.hexdigest()[:16])
+    global LAST_GRADED
+    if os.path.exists(pk):
+        datas, LAST_GRADED = pickle.load(open(pk, 'rb'))
+        print('title frames: from the cache', flush=True)
+        return datas
+    datas = _encode_parallel(frames, fps)
+    pickle.dump((datas, LAST_GRADED), open(pk, 'wb'))
+    return datas
+
+
+def _encode_parallel(frames, fps=None):
     from concurrent.futures import ProcessPoolExecutor
     m = letter_mask()
     lum = np.stack(frames[::3]).astype(np.float32).mean(-1)[:, m]

@@ -10,11 +10,11 @@ draw_menu:
         call menu_footer
         jp draw_page
 
-menu_footer:                            ; bottom line: (C) FONY purple, (.)(.) bright yellow, [H]ELP white; all bold
+menu_footer:                            ; bottom line: (C) FONY red (as the XXXL logo), (.)(.) bright yellow, [H]ELP white; all bold
         ld hl,s_copy
         ld d,23
         ld e,0
-        ld a,0xD1
+        ld a,0x81                       ; the red of the XXXL logo (colour 8)
         call boldcol
         ld hl,s_eyes
         ld d,23
