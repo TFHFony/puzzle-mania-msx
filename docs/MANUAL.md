@@ -1,6 +1,6 @@
 # Puzzle Mania XXXL — manual
 
-*Two puzzle games for the MSX — MSXdev26 entry — freeware*
+*Two puzzle games for the MSX — version 1.0 — MSXdev26 entry — freeware*
 
 ![Choose your puzzle](images/g_choice.png)
 
@@ -27,12 +27,14 @@ You play with the keyboard or with a joystick in port 1.
 | **NEO16 Mapper** | This game comes as a 16 MByte ROM (short clips, no SCC) and as a full 128 MByte ROM (full-length clips, with SCC support). |
 
 ## 2.1 Optional
+
 | | |
 |---|---|
 | **MSX2, MSX2+, turbo R** | **Better colours:** every photo gets its own set of colours, so skin tones and details look much more natural. |
 | **SCC cartridge** (in another slot) | **Higher quality music:** the music and jingles play at twice the sound quality. |
 
 ## 2.2 Emulators
+
 | | |
 |---|---|
 | **openMSX v22** | openMSX supports 128 MByte NEO16 cartridges. Select an MSX2 and an SCC for XXXL enjoyment. |

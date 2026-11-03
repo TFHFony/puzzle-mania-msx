@@ -324,7 +324,7 @@ sp_none: db "NONE",0
 sp_rom: db "64 MB",0,0,0,0,0,0,0,0,0,0,0
         db "128 MB",0,0,0,0,0,0,0,0,0,0
         db "15 MB TEST",0,0,0,0,0,0
-        db "?",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db "15 MB",0,0,0,0,0,0,0,0,0,0,0
         INCLUDE "buildno.inc"
 sp_eyes: db "(.)(.)",0
 sp_url: db "HTTPS://WWW.FILE-HUNTER.COM",0
