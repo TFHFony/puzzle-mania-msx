@@ -1,11 +1,11 @@
 ; ------------------------------------------------------------------------------------------------ the memory game and the choice screen (overlay bank MEMB, assembled by mem.asm)
 ; The code bank (memory.asm) calls one routine per frame through the stubs of stub.inc (ovl_mm_init / ovl_mm_frame / ovl_mg_init / ovl_mg_frame), mvsync (the music) in between,
-; and draws the cursor with setcursor (v_cx, v_cy, v_cw, v_ch).  5 x 4 cards of 40 x 40 pixels (5 x 5 characters) with a gap of one character: card (cx, cy) has its top left
-; character at column 1 + 6 cx, row 1 + 6 cy; row 0 is the header.  The cards are in MEMDATA (tools/memory_cards.py): 13 per variant (12 photos, the back), 400 bytes each:
-; 5 rows of 40 pattern bytes, 5 rows of 40 colour bytes.  The state is in the RAM of the puzzle permutation (C100h..C13Fh).
+; and draws the cursor with setcursor (v_cx, v_cy, v_cw, v_ch).  5 x 4 cards of 40 x 40 pixels in blocks of 6 x 5 characters (a black margin of 4 pixels at both sides): the block of card (cx, cy) has its top left
+; character at column 1 + 6 cx, row 1 + 6 cy; row 0 is the header.  The cards are in the bank MEMD (tools/memory_cards.py): 13 per variant (12 photos, the back), 480 bytes each:
+; 5 rows of 48 pattern bytes, 5 rows of 48 colour bytes.  The state is in the RAM of the puzzle permutation (C100h..C13Fh).
 MEMDATA equ 0x4600
-CARD    equ 400
-MEMICON equ MEMDATA + 26 * CARD         ; the big cards of the choice screen (2080 bytes each: MSX1, MSX2)
+CARD    equ 480                         ; a card: 5 rows of 48 pattern bytes, 5 rows of 48 colour bytes (6 x 5 characters: 40 pixels and a black margin of 4 pixels at both sides)
+MEMICON equ MEMDATA                     ; the big cards of the choice screen (2080 bytes each: MSX1, MSX2); the cards themselves are in the bank MEMD (26 x 480 bytes)
 ICONSZ  equ 2080
 
         MACRO CELLADDR row, col
@@ -23,34 +23,44 @@ vset:   ld a,l                          ; HL = address (write)
         out (0x99),a
         ret
 
-csrc:   ld l,d                          ; D = card image 0..12 -> HL = its bytes (the variant of the machine)
+csrc:   ld l,d                          ; D = card image 0..12 -> HL = its address in the bank MEMD as page 1 shows it (4000h +): 480 d (the variant of the machine)
         ld h,0
         add hl,hl
         add hl,hl
         add hl,hl
-        add hl,hl                       ; 16 d
+        add hl,hl
+        add hl,hl                       ; 32 d
         ld c,l
         ld b,h
         add hl,hl
         add hl,hl
-        add hl,hl                       ; 128 d
-        add hl,bc                       ; 144 d
-        ld b,d
-        ld c,0
-        add hl,bc                       ; 400 d
-        ld bc,MEMDATA
+        add hl,hl
+        add hl,hl                       ; 512 d
+        or a
+        sbc hl,bc                       ; 480 d
+        ld bc,0x4000
         IF MSX2PAL
         ld a,(v_msx)
         or a
         jr z,.b
-        ld bc,MEMDATA + 13 * CARD
+        ld bc,0x4000 + 13 * CARD
 .b:
         ENDIF
         add hl,bc
         ret
 
-dcard:  push de                         ; E = place, D = image
+dcard:  push de                         ; E = place, D = image: the card is read through the window of page 2 (the bank MEMD)
         call csrc
+        ld a,h
+        add a,0x40                      ; 8000h +
+        ld h,a
+        push hl
+        ld hl,MEMD
+        ld a,l
+        ld (0x7000),a
+        ld a,h
+        BANKHI 0x7001
+        pop hl
         pop de
         ld a,e
         add a,a
@@ -73,7 +83,7 @@ dcard_at:                               ; BC = pattern address of the top left c
         out (0x99),a
         push bc
         ld c,0x98
-        ld b,40
+        ld b,48
 .o:     outi
         jp nz,.o
         pop bc
@@ -309,7 +319,7 @@ mkeys:  ld a,(k8)
         ld a,c
         ret
 
-cursor: ld a,(m_cx)                     ; the rectangle of the sprite cursor around the card: x = 8 + 48 cx, y = 8 + 48 cy
+cursor: ld a,(m_cx)                     ; the rectangle of the sprite cursor around the card: x = 12 + 48 cx, y = 8 + 48 cy
         ld e,a
         add a,a
         add a,e
@@ -317,7 +327,7 @@ cursor: ld a,(m_cx)                     ; the rectangle of the sprite cursor aro
         add a,a
         add a,a
         add a,a
-        add a,8
+        add a,12                        ; (the card starts four pixels into its block)
         ld (v_cx),a
         ld a,(m_cy)
         ld e,a

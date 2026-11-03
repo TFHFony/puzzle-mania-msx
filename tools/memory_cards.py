@@ -1,5 +1,5 @@
-"""The cards of the memory game (game/memplay.asm): 12 photo cards and the back of a card, 40 x 40 pixels = 5 x 5 characters, coded for SCREEN 2 (2 colours per 8x1):
-a card = 5 rows of 40 pattern bytes, then 5 rows of 40 colour bytes (400 bytes; one character row of the card is 5 characters = 40 contiguous bytes in the VRAM).
+"""The cards of the memory game (game/memplay.asm): 12 photo cards and the back of a card, 40 x 40 pixels, coded for SCREEN 2 (2 colours per 8x1):
+a card = a block of 6 x 5 characters (48 x 40 pixels: the card with a black margin of 4 pixels at both sides): 5 rows of 48 pattern bytes, then 5 rows of 48 colour bytes (480 bytes).
  MSX1: the photos for the TMS9918A palette; MSX2: for one palette of 16 colours for all the cards (colours 0 and 1 black, 4 = the blue of the card back, 3 / 9 (cursor), 14 / 15 (text) as in the TMS9918A; the other 9 are
  optimised on the mosaic of the photos).  The back of the card is drawn with exactly two colours (blue 4 and white 15), not coded: no dither, no colour spill.
   build() -> dict(data = 2 x 13 cards (MSX1 photos 0..11 + back, MSX2 photos 0..11 + back), pal = 32 bytes V9938 of the MSX2 palette, previews in work/preview/memory_*.png)"""
@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__)); PROJ = os.path.dirname(HERE)
 sys.path.insert(0, HERE); sys.path.insert(0, r'F:\MSX Projects\Dev27\msx1-video-player\tools')
 CW = CH = 40
+CWB, MARG = 48, 4                                   # a block of 6 x 5 characters: the card with a black margin of 4 pixels at both sides (the blocks of the row are centred on the screen)
 BLUE, WHITE = 4, 15
 KEEP = (3, 9, 14, 15)                            # the colours of the cursor (flashing, as everywhere in the game) and of the bold text (grey, white): as the TMS9918A has them
 FREE = [2, 5, 6, 7, 8, 10, 11, 12, 13]
@@ -57,10 +58,10 @@ def palette(tl):
 
 
 def back_mask():
-    """the back of a card: a white frame and a white question mark on blue (two colours only); the question mark is centred on its ink"""
+    """the back of a card (40 x 40): a white frame of 4 pixels and a white question mark; the question mark is centred on its ink"""
     im = Image.new('L', (CW, CH), 0)
     d = ImageDraw.Draw(im)
-    d.rectangle([0, 0, CW - 1, CH - 1], outline=255, width=2)
+    d.rectangle([0, 0, CW - 1, CH - 1], outline=255, width=4)
     f = ImageFont.truetype('C:/Windows/Fonts/arialbd.ttf', 40)
     x0, y0, x1, y1 = d.textbbox((0, 0), '?', font=f)
     d.text(((CW - (x1 - x0)) // 2 - x0, (CH - (y1 - y0)) // 2 - y0), '?', font=f, fill=255)
@@ -110,11 +111,32 @@ def card_bytes(pat, col):
 
 
 def back_card():
-    m = back_mask()
-    pat = (m.reshape(CH, CW // 8, 8).astype(np.uint8) << (7 - np.arange(8, dtype=np.uint8))).sum(-1).astype(np.uint8)
-    col = np.full(pat.shape, (WHITE << 4) | BLUE, np.uint8)
-    rend = np.zeros((CH, CW, 3), np.uint8)
+    """-> the bytes of the card (6 x 5 characters) and the mask of the white; the edge characters hold black and white only (the frame is 4 pixels wide), the others blue and white"""
+    m = np.zeros((CH, CWB), bool)
+    m[:, MARG:MARG + CW] = back_mask()
+    card = np.zeros((CH, CWB), bool)
+    card[:, MARG:MARG + CW] = True
+    pat = np.zeros((CH, CWB // 8), np.uint8)
+    col = np.zeros((CH, CWB // 8), np.uint8)
+    for y in range(CH):
+        for cx in range(CWB // 8):
+            sl = slice(cx * 8, cx * 8 + 8)
+            w, c = m[y, sl], card[y, sl]
+            bg = BLUE if c.all() else 1
+            assert c.all() or (w == c).all(), (y, cx)           # an edge character: the card pixels in it are white (no blue next to the black margin)
+            pat[y, cx] = int(sum(1 << (7 - i) for i in range(8) if w[i]))
+            col[y, cx] = (WHITE << 4) | bg
     return card_bytes(pat, col), m
+
+
+def pad_card(t):
+    """a 40 x 40 photo in a block of 48 x 40: a black margin of 4 pixels at both sides (fixed black: the edge characters keep black and one photo colour)"""
+    img = np.zeros((CH, CWB, 3), np.float32)
+    img[:, MARG:MARG + CW] = np.asarray(t, np.float32)
+    fix = np.zeros((CH, CWB), np.int8)
+    fix[:, :MARG] = 1
+    fix[:, MARG + CW:] = 1
+    return img, fix
 
 
 def build(blue_msx2=5):
@@ -132,19 +154,21 @@ def build(blue_msx2=5):
     for kind, tl, pl in ((1, t1, None), (2, t2, pal)):
         rs = []
         for t in tl:
-            pat, col, rend = stills.encode(np.asarray(t, np.float32), None, pl)
+            img, fix = pad_card(t)
+            pat, col, rend = stills.encode(img, fix, pl)
             data += card_bytes(pat, col); rs.append(rend)
         data += bk
         rends[kind] = rs
     for kind in (1, 2):
         pl = pal if kind == 2 else PO.TMS
-        sh = Image.new('RGB', (4 * 44 * 3, 4 * 44 * 3))
-        for k, r in enumerate(rends[kind] + [np.where(m[..., None], pl[WHITE], pl[BLUE]).astype(np.uint8)]):
-            sh.paste(Image.fromarray(np.asarray(r, np.uint8)).resize((120, 120), Image.NEAREST), ((k % 4) * 132, (k // 4) * 132))
+        sh = Image.new('RGB', (4 * 52 * 3, 4 * 44 * 3))
+        for k, r in enumerate(rends[kind] + [np.where(m[..., None], pl[WHITE], np.where(np.pad(np.ones((CH, CW), bool), ((0, 0), (MARG, MARG)))[..., None], pl[BLUE], pl[1])).astype(np.uint8)]):
+            sh.paste(Image.fromarray(np.asarray(r, np.uint8)).resize((144, 120), Image.NEAREST), ((k % 4) * 156, (k // 4) * 132))
         sh.save(os.path.join(prev, 'memory_cards_msx%d.png' % kind))
     data += big_card(BIG_BLUE[0]) + big_card(blue_msx2)         # the cards of the choice screen: MSX1, MSX2
-    assert len(data) == 2 * 13 * 400 + 2 * 2080
-    return dict(data=data, pal=PO.to_v9938(pal))
+    cards, data = data[:2 * 13 * 480], data[2 * 13 * 480:]
+    assert len(cards) == 2 * 13 * 480 and len(data) == 2 * 2080
+    return dict(data=data, cards=cards, pal=PO.to_v9938(pal))
 
 
 if __name__ == '__main__':

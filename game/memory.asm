@@ -154,10 +154,12 @@ memory:                                 ; the memory game; when it is won: the s
         ld a,(m_att)
         ld (att_on),a                   ; the attract mode: the clip plays once and it goes on
         call win_go
+        call job_reset                  ; (the engine of the player still holds the last row of the last card: the next screen with music would draw it again)
         xor a
         ld (att_on),a
         ret
 .out:   call music_stop
+        call job_reset
         ld a,PAL_TMS
         call need_pal
         scf
@@ -186,7 +188,7 @@ mem_jobs:                               ; the cards that the memory bank wants d
         push hl                         ; the next entry
         push bc                         ; the source
         push de                         ; the destination
-        ld hl,MEMB
+        ld hl,MEMD
         ld (q_bank),hl
         ld hl,0
         ld (q_adj),hl
@@ -197,17 +199,17 @@ mem_jobs:                               ; the cards that the memory bank wants d
         ld d,a
         push de
         push hl
-        ld b,40                         ; the patterns: 5 rows of 40 bytes
+        ld b,48                         ; the patterns: 5 rows of 48 bytes
         ld c,5
         call jq_put
         pop hl
-        ld bc,200
-        add hl,bc                       ; the colours: 200 bytes further, 2000h further in the VRAM
+        ld bc,240
+        add hl,bc                       ; the colours: 240 bytes further, 2000h further in the VRAM
         pop de
         ld a,d
         add a,0x20
         ld d,a
-        ld b,40
+        ld b,48
         ld c,5
         call jq_put
         pop hl

@@ -383,12 +383,13 @@ def main():
         paltab = paltab + ct['pal']
     mc = memory_cards.build(ct['x'] if msx2 else 5)
     open(os.path.join(PROJ, 'game', 'memdata.bin'), 'wb').write(mc['data'])
+    cardbank = pad(mc['cards'])                                                  # the cards of the memory game: their own bank (MEMD = MEMB + 1)
     MEMPAL = len(paltab) // 32 if msx2 else 0
     if msx2:
         paltab = paltab + mc['pal']
     MEMB = len(banks) + (sum(nb) if ascii16 else 0)                              # a free bank below PLR_BANK - 1: page 1 is switched to it with two writes (low, high byte), so the high byte must be 0 like that of OVLB
-    assert MEMB < PLR_BANK - 1, MEMB
-    open(os.path.join(PROJ, 'game', 'memcfg.inc'), 'w').write('MEMB equ %d\nMEMPAL equ %d\nCHTH0 equ %d\nCHOICEPAL equ %d\n' % (MEMB, MEMPAL, CHTH0, CHOICEPAL))
+    assert MEMB + 1 < PLR_BANK - 1, MEMB
+    open(os.path.join(PROJ, 'game', 'memcfg.inc'), 'w').write('MEMB equ %d\nMEMD equ %d\nMEMPAL equ %d\nCHTH0 equ %d\nCHOICEPAL equ %d\n\n' % (MEMB, MEMB + 1, MEMPAL, CHTH0, CHOICEPAL))
     open(os.path.join(PROJ, 'game', 'fonycfg.inc'), 'w').write('FYFRAMES equ %d\nFYFRAMES16 equ %d\nFYP1 equ %d\nFYP2 equ %d\nFYS1 equ %d\nFYS2 equ %d\nFONYPAL equ %d\nFONYTEST equ %d\nBOOMP equ %d\nBOOMS equ %d\nNBOOMP equ %d\nNBOOMS equ %d\n' % (fv['n'], fv['n'], FYP1, FYP2, FYS1, FYS2, FONYPAL, 1 if '--fonytest' in sys.argv else 0, BOOMP, BOOMS, len(boomp) // 16384, len(booms) // 16384))
     open(os.path.join(PROJ, 'game', 'fonytab.inc'), 'w').write(fv['tab'])
     JNGP = EX0; JNGS = JNGP + len(jing8) // 16384
@@ -474,7 +475,8 @@ def main():
                 pat, col = load(c)
                 f.write(packed(pat, col))
         f.write(membank)                # the memory game (MEMB = the first free bank)
-        f.write(bytes([0xFF]) * 16384 * (PLR_BANK - 2 - len(banks) - (sum(nb) if ascii16 else 0)))
+        f.write(cardbank)               # its cards (MEMD = MEMB + 1)
+        f.write(bytes([0xFF]) * 16384 * (PLR_BANK - 3 - len(banks) - (sum(nb) if ascii16 else 0)))
         f.write((plr_scc + bytes([0xFF]) * (16384 - len(plr_scc))) if scc else bytes([0xFF]) * 16384)      # bank PLR_BANK - 1: the player block for the SCC
         f.write(plr + bytes([0xFF]) * (16384 - len(plr)))      # bank PLR_BANK: the player block for the RAM
         f.write(ovl)                    # bank VIDEO0 - 1 = OVLB
