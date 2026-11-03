@@ -10,12 +10,12 @@
 
 ## 1. The game
 
-Puzzle Mania has two games, both with the same twelve photos:
+Puzzle Mania has two games for your enjoyment, both based on pictures of The File-Hunter's favourite subjects:
 
 - **Sliding puzzle** — the photo is cut into pieces and shuffled. Slide the pieces back into place. You choose the size: 3×3 (easy) up to 6×6 (hard).
 - **Memory** — twenty cards lie face down. Turn two at a time and find the ten pairs of photos (ten of the twelve photos, a different selection every time).
 
-Finish a puzzle and you get a jingle, falling confetti and a video of the photo.
+Finish a puzzle and get your full reward! You've earned it, so... enjoy it!
 
 You play with the keyboard or with a joystick in port 1.
 
@@ -23,9 +23,20 @@ You play with the keyboard or with a joystick in port 1.
 
 | | |
 |---|---|
-| **Minimum** | Any **MSX1** with a **NEO16** cartridge (the 128 MB ROM needs a cartridge or emulator that can read that much). 16 KB RAM is enough. 50 Hz and 60 Hz machines both work. The music plays on the standard sound chip (PSG). |
+| **Minimum** | Any **MSX1** with at least 16 KB RAM is enough. 50 Hz and 60 Hz machines both work. The music plays on the standard sound chip (PSG). |
+| **NEO16 Mapper** | This ROM comes in a 16MByte version (short clips, no SCC) and a full 128MByte version with full clips and SCC Support. |
+
+## 2.1 Optional
+| | |
+|---|---|
 | **MSX2, MSX2+, turbo R** | **Better colours:** every photo gets its own set of colours, so skin tones and details look much more natural. |
 | **SCC cartridge** (in another slot) | **Higher quality music:** the music and jingles play at twice the sound quality. |
+
+## 2.2 Emulators
+| | |
+|---|---|
+| **openMSX v22** | openMSX supports 128MByte NEO16 cartridges. Select MSX2 & an SCC for XXXL enjoyment. |
+| **WebMSX** | Use the version on File-Hunter.com or just go to https://www.file-hunter.com/MSXdev/?id=puzzlemaniaxxxl |
 
 The game finds out by itself what your machine can do. Nothing needs to be set.
 
@@ -49,7 +60,7 @@ At the bottom of this screen and the photo menu: **H** shows the help, **ESC** s
 
 ## 4. Sliding puzzle
 
-**Choose a photo.** Use the cursor keys; the arrow at the side shows that there are more photos. Press **SPACE** to choose.
+**Choose a photo.** Use the cursor keys; the arrow at the side shows that there are more photos. 12 in total for your XXXL pleasures! Press **SPACE** to choose.
 
 ![Choose a photo](images/g_photos.png)
 
@@ -67,7 +78,7 @@ At the bottom of this screen and the photo menu: **H** shows the help, **ESC** s
 | ![A shuffled puzzle](images/g_puzzle.png) | ![Solved](images/g_solved.png) |
 | A shuffled 3×3 puzzle | Solved: your moves and time are shown |
 
-When you finish you hear the jingle, confetti falls over the picture and the video starts. Press **SPACE** to go back to the menu.
+When you finish you will get your XXXL reward. There is a reward clip for each and every lady/picture. Press **SPACE** to go back to the menu.
 
 **Playing with the cursor.** Press **C** (here or during the game) to switch from ARROWS to CURSOR; the size menu then shows `C MOVE:CURSOR`.
 
@@ -94,7 +105,7 @@ Twenty cards, ten pairs. Move the yellow corners over a card and press **SPACE**
 |---|---|
 | ![Memory board](images/g_memory.png) | ![A card turned](images/g_memory_turn.png) |
 
-When the last pair is found the board stays on the screen, the jingle plays and confetti falls. Press **SPACE** to see the video of the last pair, and **SPACE** again to go back to the choice screen.
+When the last pair is found the board you'll get your reward, which matches the last pair you've solved. Press **SPACE** to see the video of the last pair, and **SPACE** again to go back to the choice screen.
 
 ![Memory solved](images/g_memory_solved.png)
 
@@ -126,9 +137,17 @@ Leave the game alone for a while and it plays by itself, alternating between the
 | GFX | The File-Hunter & Tittygram |
 | Music | The File-Hunter & Solmi AI |
 
+## 9. Some other stuff:
+
+| | |
+|---|---|
+| Pico | Are you using an MSX Pico or Pico+? Make sure to set the Speed Improvement to RISKY |
+| "S" | Want to change some settings? Keep "S" pressed while the game boots |
+| (.)(.) | Send them to boobies@file-hunter.com |
+
 ![Credits](images/g_credits.png)
 
-## 9. Freeware licence
+## 10. Freeware licence
 
 **PUZZLE MANIA — freeware.**
 
