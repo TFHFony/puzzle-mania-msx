@@ -14,7 +14,6 @@ manual/
 *.pdf
 wmsx.js
 webmsx_test.html
-.claude/pm-tools/old/
 game/gen.inc
 game/psgtab.inc
 game/clk.inc
@@ -37,13 +36,6 @@ game/tvplay16.inc
 game/tvplay16w.inc
 game/slots_ns.txt
 tools/palettes.json.bak9
-.claude/waitstate-tools/wip/
-.claude/waitstate-tools/*.bin
-.claude/waitstate-tools/*.lst
-.claude/waitstate-tools/*.sym
-.claude/waitstate-tools/*.before
-.claude/waitstate-tools/lm/
-.claude/logomusic-tools/lm/
 *.dsk
 game/fony.inc
 game/fonyw.inc
@@ -52,3 +44,13 @@ game/fony16w.inc
 game/fonycfg.inc
 game/fonytab.inc
 game/memcfg.inc
+# local project tools, notes and measurements (kept on disk, not published)
+.claude/
+# the turbo R version has its own repository (clone it into turbor/)
+turbor/
+*.zip
+*.COM
+# photos / screenshots / videos made while testing
+/*.jpg
+/*.jpeg
+/*.png

@@ -19,6 +19,8 @@ GRADE = {10: 'eq=saturation=1.2:contrast=1.05'}                            # ffm
 FPS = 10
 LITE_FPS = 50 / 6                           # one frame per 6 fields on a 50 Hz machine (8.33 fps; 8.57 fps on 60 Hz with 7 fields)
 LITE_BUDGET = 5100                          # frames: 4 frames of 12 KB are packed in 3 banks, so about 3830 banks of 16 KB (60 MB)
+FAST_FPS = 3579545.0 / 14 / 16 / 1375       # the turbo R player: 1375 samples per frame = 11.62 fps
+FAST_BUDGET = 8500                          # frames (the ROM stays as large as with the 10 fps clips)
 FADE = 1.5                                  # seconds
 
 
@@ -27,22 +29,23 @@ def duration(i):
     return float(r.stdout)
 
 
-def lite_plan():
+def lite_plan(fast=False):
     """seconds and frames per used clip: every clip shortened by the same ratio so that all together fit the budget"""
     d = {i: duration(i) for i in USED}
-    ratio = min(1.0, LITE_BUDGET / (LITE_FPS * sum(d.values())))
-    return {i: (d[i] * ratio, int(d[i] * ratio * LITE_FPS)) for i in USED}
+    fps, bud = (FAST_FPS, FAST_BUDGET) if fast else (LITE_FPS, LITE_BUDGET)
+    ratio = min(1.0, bud / (fps * sum(d.values())))
+    return {i: (d[i] * ratio, int(d[i] * ratio * fps)) for i in USED}
 
 
-def extract(i, lite):
+def extract(i, lite, fast=False):
     src = os.path.join(PROJ, 'Videos', CLIPS[i])
     crop = "crop=w='min(iw,ih*4/3)':h='min(ih,iw*3/4)':x='(iw-out_w)*%.3f':y='(ih-out_h)/2',scale=256:192:flags=area,hqdn3d=3:3:8:6" % CROPX.get(i, 0.5)
     if GRADE.get(i):
         crop += ',' + GRADE[i]
     if lite:
-        sec, n = lite_plan()[i]
-        out = os.path.join(PROJ, 'work', 'lite_clip%02d_frames.rgb' % i)
-        vf = crop + ",fps=%.6f,fade=t=out:st=%.3f:d=%.3f" % (LITE_FPS, sec - FADE, FADE)
+        sec, n = lite_plan(fast)[i]
+        out = os.path.join(PROJ, 'work', ('fast_' if fast else 'lite_') + 'clip%02d_frames.rgb' % i)
+        vf = crop + ",fps=%.6f,fade=t=out:st=%.3f:d=%.3f" % (FAST_FPS if fast else LITE_FPS, sec - FADE, FADE)
         extra = ['-t', '%.3f' % sec, '-frames:v', str(n)]
     else:
         out = os.path.join(PROJ, 'work', 'clip%02d_frames.rgb' % i)
@@ -55,17 +58,18 @@ def extract(i, lite):
 
 def main():
     args = sys.argv[1:]
-    lite = '--lite' in args
-    idx = [int(a) for a in args if a != '--lite'] or USED
+    fast = '--fast' in args
+    lite = '--lite' in args or fast
+    idx = [int(a) for a in args if a not in ('--lite', '--fast')] or USED
     if lite:
-        plan = lite_plan()
+        plan = lite_plan(fast)
         print({i: (round(s, 1), n) for i, (s, n) in plan.items()}, 'frames', sum(n for _, n in plan.values()), flush=True)
     for i in idx:
-        f = os.path.join(PROJ, 'work', ('lite_' if lite else '') + 'clip%02d_bytes.npz' % i)
+        f = os.path.join(PROJ, 'work', ('fast_' if fast else 'lite_' if lite else '') + 'clip%02d_bytes.npz' % i)
         if os.path.exists(f):
             continue
         t0 = time.time()
-        frames, n = extract(i, lite)
+        frames, n = extract(i, lite, fast)
         tasks = [(frames, n, s, min(n, s + 38), 'col15') for s in range(0, n, 38)]
         with mp.Pool(8) as pool:
             res = sorted(pool.imap_unordered(V.work, tasks), key=lambda r: r[0])

@@ -1,1 +1,0 @@
-if {[catch { source "F:/MSX Projects/PMdev26/.claude/waitstate-tools/cmp_body.tcl" } err]} { set f [open "F:/MSX Projects/PMdev26/.claude/waitstate-tools/cmp_err.txt" w]; puts $f "err=$err"; close $f }
