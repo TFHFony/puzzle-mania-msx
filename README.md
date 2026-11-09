@@ -16,11 +16,11 @@ The ROMs and the PDF manual are attached to the [releases](../../releases), they
 
 | file | |
 |---|---|
-| `PuzzleManiaXXXL_v1.0_128MB[NEO16].rom` | the full version (123 MB): full length 10 fps reward videos, a 30 s video with music in the letters of the title, a palette per photo on an MSX2 or later, 16 kHz music on an SCC. Needs a cartridge / emulator that maps more than 64 MB. |
-| `PuzzleManiaXXXL_v1.0_15MB[NEO16].rom` | the small version (15 MB): very short reward videos, no SCC music. |
-| `PuzzleMania_checksums.txt` | sizes and MD5 |
+| `PuzzleManiaXXXL_v1.0_128MB_NEO16.rom` | the full version (123 MB): full length 10 fps reward videos, a 30 s video with music in the letters of the title, a palette per photo on an MSX2 or later, 16 kHz music on an SCC. Needs a cartridge / emulator that maps more than 64 MB. |
+| `PuzzleManiaXXXL_v1.0_15MB_NEO16.rom` | the small version (15 MB): very short reward videos, no SCC music. |
+| `checksums.txt` | sizes and MD5 |
 
-openMSX: `openmsx -machine Philips_VG_8020 -cart "PuzzleManiaXXXL_v1.0_15MB[NEO16].rom" -romtype NEO-16`
+openMSX: `openmsx -machine Philips_VG_8020 -cart "PuzzleManiaXXXL_v1.0_15MB_NEO16.rom" -romtype NEO-16`
 
 ## Keys and joystick
 cursors + SPACE choose, ESC back, SELECT 50/60 Hz (MSX2+), H solution (hold), N numbers/moves/time (hold), T hint, L tile lines (off/thick/thin), C control (arrows/cursor).
